@@ -753,18 +753,21 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 									__private int VOXELS_MASK, 			// 5
 									__private int NFEAT,				// 6
 									__global float* x_space, 			// 7
-									__global float *kmatrix)  			// 8
+									__global float *kmatrix, 			// 8
+									__private int voxbatchoffset, 		// 9
+									__private int voxbatchsize)			// 10
 
 {
 
 	int voxind = get_global_id(0);
 
-	if (voxind >= VOXELS_MASK)
+	if (voxind >= voxbatchsize )
 		return;
 
-	int volumeId = voxelIndex1D[voxind];
+	// apply voxel batch offset
+	int volumeId = voxelIndex1D[voxind + voxbatchoffset];
 
-	if (volumeId+deltaIndex[0] < 0 || volumeId+deltaIndex[18] >= SIZ_VOLUME)
+	if (volumeId+deltaIndex[0] < 0 || volumeId+deltaIndex[NFEAT-1] >= SIZ_VOLUME)
 	{
 		return;
 	}
@@ -838,11 +841,16 @@ __kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier
                                                   __private int VOXELS_MASK, 				// 17
                                                   __global const float *kmatrix, 			// 18
                                                   __private int NFEAT, 						// 19
-                                                  __private int fold)						// 20
+                                                  __private int fold,						// 20
+												  __private int voxbatchoffset, 			// 21
+									              __private int voxbatchsize)				// 22
 {
     int voxind = get_global_id(0);
 
-    int volumeId = voxelIndex1D[voxind];
+    // apply voxbatchoffset
+    int voxindWithOffset = voxind+voxbatchoffset;
+
+    int volumeId = voxelIndex1D[voxindWithOffset];
 
     int x=41,y=17,z=25;
    	int testvoxIndex = Calculate3DIndex(x,y,z,DATA_W,DATA_H);
@@ -852,7 +860,7 @@ __kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier
 
     int SIZ_VOLUME = DATA_W*DATA_H*DATA_D;
 
-    if (volumeId+deltaIndex[0] < 0 || volumeId+deltaIndex[NFEAT] >= SIZ_VOLUME)
+    if (volumeId+deltaIndex[0] < 0 || volumeId+deltaIndex[NFEAT-1] >= SIZ_VOLUME)
     {
         Classifier_Performance[volumeId] = 0.0f;
         return;
@@ -861,9 +869,9 @@ __kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier
 	int trainN = NUMBER_OF_VOLUMES-1;
 
     //printf("calling leaveoneout\n");
-    int trainOffset = voxind*(NUMBER_OF_VOLUMES-1);
+    int trainOffset = voxindWithOffset*(NUMBER_OF_VOLUMES-1);
 
-    float margin = doFold( x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex+trainOffset, testIndex+voxind, NFEAT, alph+trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix+voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold);
+    float margin = doFold( x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex+trainOffset, testIndex+voxindWithOffset, NFEAT, alph+trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix+voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold);
 
  /*   if (testvoxIndex == volumeId)
     		printf("margin=%f verdadeiro=%f\n", margin, c_d[fold]);

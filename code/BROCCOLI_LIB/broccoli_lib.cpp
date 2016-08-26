@@ -13127,7 +13127,7 @@ void BROCCOLI_LIB::PerformGLMFTestSecondLevelWrapper()
 }
 
 
-void BROCCOLI_LIB::PerformSearchlightWrapper()
+/*void BROCCOLI_LIB::PerformSearchlightWrapper()
 {
     // Allocate memory for volumes
     d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
@@ -13209,8 +13209,8 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     clReleaseMemObject(d_Statistical_Maps);
     clReleaseMemObject(d_mask_index1D);
 }
+*/
 
-/*
 void BROCCOLI_LIB::PerformSearchlightWrapper()
 {
 	//if (true) return;
@@ -13433,10 +13433,14 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 	d_deltas = clCreateBuffer(context, CL_MEM_READ_ONLY, NFEAT * sizeof(int), NULL, NULL);
 	clEnqueueWriteBuffer(commandQueue, d_deltas, CL_TRUE, 0, NFEAT* sizeof(int), deltas , 0, NULL, NULL);
 
-    d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
-    d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
 
-	clSetKernelArg(PrepareSearchlightKernel, 0, sizeof(cl_mem),  &d_First_Level_Results);
+    // divide voxels in batches to avoid out of resources (depends on GPU memory/performance)
+    int NUM_VOXELS_BATCH = 10000;
+
+    d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
+    d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+
+    clSetKernelArg(PrepareSearchlightKernel, 0, sizeof(cl_mem),  &d_First_Level_Results);
 	clSetKernelArg(PrepareSearchlightKernel, 1, sizeof(cl_mem),  &d_mask_index1D);
 	clSetKernelArg(PrepareSearchlightKernel, 2, sizeof(cl_mem),  &d_deltas);
 	clSetKernelArg(PrepareSearchlightKernel, 3, sizeof(int),     &SIZ_VOLUME);
@@ -13446,34 +13450,54 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 	clSetKernelArg(PrepareSearchlightKernel, 7, sizeof(cl_mem),  &d_x_space);
 	clSetKernelArg(PrepareSearchlightKernel, 8, sizeof(cl_mem),  &d_kmatrix);
 
-	printf("Before preparing x-space and kernel matrix\n");
-
-	runKernelErrorPrepareSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
-	clFinish(commandQueue);
-
-	printf("x-space and kernel matrix prepared\n");
-
-	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	// PART 3): Searchlight SVM
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 0, sizeof(cl_mem),  &d_Statistical_Maps);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 1, sizeof(cl_mem),  &d_First_Level_Results);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 2, sizeof(cl_mem),  &d_MNI_Brain_Mask);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 3, sizeof(cl_mem),  &c_d);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 4, sizeof(cl_mem),  &c_Correct_Classes);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 5, sizeof(int),     &MNI_DATA_W);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 6, sizeof(int),     &MNI_DATA_H);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 7, sizeof(int),     &MNI_DATA_D);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 8, sizeof(int),     &NUMBER_OF_SUBJECTS);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 9, sizeof(float),   &n);
-    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 10, sizeof(int),    &EPOCS);
-
-    if (true)
+    int NUM_BATCHES = ceil((float)vox_mask / (float)NUM_VOXELS_BATCH);
+    for (int batch=0; batch<NUM_BATCHES; ++batch)
     {
-        d_trainIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(int), NULL, NULL);
-        d_testIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * LEAVEOUT* sizeof(int), NULL, NULL);
-        d_alpha 	 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(float), NULL, NULL);
+    	int voxoffset    = batch*NUM_VOXELS_BATCH;
+    	int voxbatchsize = NUM_VOXELS_BATCH;
 
-        clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 11, sizeof(cl_mem),  	&d_x_space); // x_space
+    	//reset batch size for last batch
+    	if (voxoffset + voxbatchsize > vox_mask)
+    		voxbatchsize = vox_mask-voxoffset;
+
+    	printf("Batch %d. Starting at voxel %d, processing %d voxels.\n",batch+1, voxoffset, voxbatchsize);
+
+		clSetKernelArg(PrepareSearchlightKernel, 9, sizeof(int),     &voxoffset);
+		clSetKernelArg(PrepareSearchlightKernel, 10, sizeof(int),    &voxbatchsize);
+
+		printf("Before preparing x-space and kernel matrix\n");
+
+		// Calculate how many blocks are required
+		xBlocks = (size_t)ceil((float)voxbatchsize / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
+
+		// Calculate total number of threads (this is done to guarantee that total number of threads is multiple of local work size, required by OpenCL)
+		globalWorkSizeCalculateStatisticalMapSearchlight[0] = xBlocks * localWorkSizeCalculateStatisticalMapSearchlight[0];
+
+		runKernelErrorPrepareSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+		clFinish(commandQueue);
+
+		printf("x-space and kernel matrix prepared\n");
+
+		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+		// PART 3): Searchlight SVM
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 0, sizeof(cl_mem),  &d_Statistical_Maps);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 1, sizeof(cl_mem),  &d_First_Level_Results);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 2, sizeof(cl_mem),  &d_MNI_Brain_Mask);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 3, sizeof(cl_mem),  &c_d);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 4, sizeof(cl_mem),  &c_Correct_Classes);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 5, sizeof(int),     &MNI_DATA_W);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 6, sizeof(int),     &MNI_DATA_H);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 7, sizeof(int),     &MNI_DATA_D);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 8, sizeof(int),     &NUMBER_OF_SUBJECTS);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 9, sizeof(float),   &n);
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 10, sizeof(int),    &EPOCS);
+
+
+		d_trainIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(int), NULL, NULL);
+		d_testIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * LEAVEOUT* sizeof(int), NULL, NULL);
+		d_alpha 	 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(float), NULL, NULL);
+
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 11, sizeof(cl_mem),  	&d_x_space); // x_space
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 12, sizeof(cl_mem), 	&d_trainIndex); // trainIndex
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 13, sizeof(cl_mem),  	&d_testIndex); // testIndex
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 14, sizeof(cl_mem),  	&d_alpha); // alpha
@@ -13482,23 +13506,20 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 17, sizeof(int),  		&vox_mask); // voxels in mask
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 18, sizeof(cl_mem),  	&d_kmatrix); // kernel matrix
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 19, sizeof(int),  		&NFEAT); // number of features
-    }
 
-    printf("Before searchlight svm\n");
+		printf("Before searchlight svm\n");
 
-   for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
-   {
-	   printf(" Fold %d\n",k+1);
-	   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
-	   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
-	   clFinish(commandQueue);
+		for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
+		{
+		   printf(" Fold %d\n",k+1);
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &voxoffset);
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxbatchsize);
 
-
-
-   }
-
-   // runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 3, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
-
+		   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+		   clFinish(commandQueue);
+		}
+    } // batches
 
     printf("After searchlight svm");
     // Copy results to  host
@@ -13508,10 +13529,8 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     // Release memory
     clReleaseMemObject(d_First_Level_Results);
     clReleaseMemObject(d_MNI_Brain_Mask);
-    
     clReleaseMemObject(c_Correct_Classes);
     clReleaseMemObject(c_d);
-    
     clReleaseMemObject(d_Statistical_Maps);
     clReleaseMemObject(d_mask_index1D);
     clReleaseMemObject(d_deltas);
@@ -13519,8 +13538,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     clReleaseMemObject(d_trainIndex);
     clReleaseMemObject(d_testIndex);
     clReleaseMemObject(d_alpha);
-    //clReleaseMemObject(d_predicted);
-}*/
+}
 
 
 void BROCCOLI_LIB::PerformMeanSecondLevelPermutationWrapper()
