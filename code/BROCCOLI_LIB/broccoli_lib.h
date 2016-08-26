@@ -242,6 +242,8 @@ class BROCCOLI_LIB
 		void SetMNIHeight(size_t h);
 		void SetMNIDepth(size_t d);
 
+		void SetNumberMaskVoxel(size_t voxels);
+
 		// Input data
 		void SetInputfMRIVolumes(float* input);
 		void SetInputCertainty(float* input);
@@ -250,6 +252,7 @@ class BROCCOLI_LIB
 		void SetInputMNIVolume(float* input);
 		void SetInputMNIBrainVolume(float* input);
 		void SetInputMNIBrainMask(float* input);
+		void SetInputMaskIndex1D(int* input);
 		void SetInputFirstLevelResults(float* input);
 		void SetNumberOfSubjects(size_t N);
 		void SetNumberOfSubjectsGroup1(int *N);
@@ -464,13 +467,15 @@ class BROCCOLI_LIB
 
 		bool OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE);
 
+		int Calculate3DIndex(int x, int y, int z, int DATA_W, int DATA_H);
+
 	private:
 
 		std::string GetBROCCOLIDirectory();
 
 		void CreateCombinedDisplacementField(float* h_Registration_Parameters, cl_mem d_Displacement_Field_X, cl_mem d_Displacement_Field_Y, cl_mem d_Displacement_Field_Z, size_t DATA_W, size_t DATA_H, size_t DATA_D);
 
-		int Calculate3DIndex(int x, int y, int z, int DATA_W, int DATA_H);
+
 		void Clusterize(int* Cluster_Indices, int& MAX_CLUSTER_SIZE, float& MAX_CLUSTER_MASS, int& NUMBER_OF_CLUSTERS, float* Data, float Threshold, float* Mask, size_t DATA_W, size_t DATA_H, size_t DATA_D, int GET_VOXEL_LABELS, int GET_CLUSTER_MASS);
 		void ClusterizeOpenCL(cl_mem Cluster_Indices, cl_mem Cluster_Sizes, cl_mem Data, float Threshold, cl_mem Mask, int DATA_W, int DATA_H, int DATA_D, int NUMBER_OF_CONTRASTS);
 		void ClusterizeOpenCLTFCE(float& MAX_VALUE, cl_mem d_Mask, int DATA_W, int DATA_H, int DATA_D, float maxThreshold);
@@ -830,6 +835,7 @@ class BROCCOLI_LIB
 		cl_kernel PermuteMatrixKernel, PermuteMatrixDoubleKernel;
 		cl_kernel IdentityMatrixKernel, IdentityMatrixDoubleKernel;
 		cl_kernel LogitMatrixKernel, LogitMatrixDoubleKernel;
+		cl_kernel PrepareInputSearchlightKernel, PrepareSearchlightKernel;
 
 		// Convolution kernels
 		cl_kernel SeparableConvolutionRowsKernel, SeparableConvolutionColumnsKernel, SeparableConvolutionRodsKernel;
@@ -896,6 +902,9 @@ class BROCCOLI_LIB
 		cl_int createKernelErrorIdentityMatrixDouble;
 		cl_int createKernelErrorLogitMatrix;
 		cl_int createKernelErrorLogitMatrixDouble;
+		cl_int createKernelErrorPrepareInputSearchlight;
+		cl_int createKernelErrorPrepareSearchlight;
+
 
 		// Convolution kernels
 		cl_int createKernelErrorSeparableConvolutionRows, createKernelErrorSeparableConvolutionColumns, createKernelErrorSeparableConvolutionRods;
@@ -1035,7 +1044,8 @@ class BROCCOLI_LIB
 		cl_int runKernelErrorGeneratePermutedVolumesFirstLevel;
 		cl_int runKernelErrorRemoveLinearFit, runKernelErrorRemoveLinearFitSlice;
 		cl_int runKernelErrorCalculatePermutationPValuesVoxelLevelInference, runKernelErrorCalculatePermutationPValuesClusterExtentInference, runKernelErrorCalculatePermutationPValuesClusterMassInference;
-
+		cl_int runKernelErrorPrepareInputSearchlight;
+		cl_int runKernelErrorPrepareSearchlight;
 
 		int OpenCLCreateBufferErrors[200];
 		int OpenCLRunKernelErrors[200];
@@ -1181,6 +1191,7 @@ class BROCCOLI_LIB
 		size_t T1_DATA_W, T1_DATA_H, T1_DATA_D, T1_DATA_T;
 		size_t MNI_DATA_W, MNI_DATA_H, MNI_DATA_D;
 		size_t CURRENT_DATA_W, CURRENT_DATA_H, CURRENT_DATA_D;
+		size_t VOXELS_MASK;
 
 		// Resolution variables
 		float TR;
@@ -1290,6 +1301,7 @@ class BROCCOLI_LIB
 		float		*h_fMRI_Volumes_MNI;
 		float		*h_MNI_Brain_Mask;
 		float		*h_Mask;
+		int         *h_mask_index1D;
 		float		*h_EPI_Mask;
 		float		*h_MNI_Mask;
 		float		*h_Smoothed_EPI_Mask;

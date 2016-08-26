@@ -3,7 +3,7 @@
 # Set compilation mode
 RELEASE=0
 DEBUG=1
-COMPILATION=$RELEASE
+COMPILATION=$DEBUG
 
 BROCCOLI_GIT_DIRECTORY=`git rev-parse --show-toplevel`
 

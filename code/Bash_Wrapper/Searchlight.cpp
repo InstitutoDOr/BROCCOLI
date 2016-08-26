@@ -52,6 +52,7 @@ int main(int argc, char **argv)
 	float			*h_Sign_Matrix;
     
     float           *h_Correct_Classes, *h_d;
+    int 			*h_index1D;
                   
     //-----------------------
     // Output
@@ -540,8 +541,8 @@ int main(int argc, char **argv)
     AllocateMemory(h_Classifier_Performance, VOLUME_SIZE, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "CLASSIFIER_PERFORMANCE");
 	AllocateMemory(h_Correct_Classes, CLASS_SIZE, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "CLASSES");
     AllocateMemory(h_d, CLASS_SIZE, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "D");
-                        
-	//AllocateMemory(h_P_Values, STATISTICAL_MAPS_SIZE, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "PERMUTATION_PVALUES");
+
+    //AllocateMemory(h_P_Values, STATISTICAL_MAPS_SIZE, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "PERMUTATION_PVALUES");
 
 	//h_Permutation_Distributions = (float**)malloc(NUMBER_OF_CONTRASTS * sizeof(float*));
 	//h_Permutation_Matrices = (unsigned short int**)malloc(NUMBER_OF_CONTRASTS * sizeof(unsigned short int*));
@@ -707,6 +708,7 @@ int main(int argc, char **argv)
         }
 	}
 
+
     // Print some info
     if (PRINT)
     {
@@ -740,6 +742,37 @@ int main(int argc, char **argv)
  	{
 		printf("It took %f seconds to initiate BROCCOLI\n",(float)(endTime - startTime));
 	}
+
+	// create voxel indices in 1D
+	std::vector<int> v;
+	for (int z=0; z<DATA_D; ++z)
+	{
+		for (int y=0; y<DATA_H; ++y)
+		{
+			for (int x=0; x<DATA_W; ++x)
+			{
+				int index1D = BROCCOLI.Calculate3DIndex(x,y,z,DATA_W,DATA_H);
+				// printf("vector index1D fora: %d\n", index1D);
+				if ( h_Mask[index1D] != 0.0f )
+				{
+					v.push_back(index1D);
+					//printf("vector index1D: %d\n", index1D);
+				}
+			}
+		}
+	}
+
+	size_t VOXELS_MASK = (size_t) v.size();
+	h_index1D = (int*)malloc(VOXELS_MASK*sizeof(int));
+	//AllocateMemoryInt2(h_index1D, VOXELS_MASK, allMemoryPointers, numberOfMemoryPointers, allNiftiImages, numberOfNiftiImages, allocatedHostMemory, "INDEX1D");
+
+	printf("%d\n", (int)VOXELS_MASK);
+
+	for (int k=0; k<v.size(); k++)
+	{
+		h_index1D[k] = v[k];
+	}
+
 
     // Print build info to file (always)
 	std::vector<std::string> buildInfo = BROCCOLI.GetOpenCLBuildInfo();
@@ -807,7 +840,9 @@ int main(int argc, char **argv)
     else
     {        
         BROCCOLI.SetInputFirstLevelResults(h_Data);
-        BROCCOLI.SetInputMNIBrainMask(h_Mask);        
+        BROCCOLI.SetInputMNIBrainMask(h_Mask);
+        BROCCOLI.SetInputMaskIndex1D(h_index1D);
+        BROCCOLI.SetNumberMaskVoxel(VOXELS_MASK);
         BROCCOLI.SetMNIWidth(DATA_W);
         BROCCOLI.SetMNIHeight(DATA_H);
         BROCCOLI.SetMNIDepth(DATA_D);                

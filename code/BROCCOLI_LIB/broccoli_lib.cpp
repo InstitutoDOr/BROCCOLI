@@ -348,7 +348,7 @@ void BROCCOLI_LIB::SetStartValues()
 
 	error = 0;
 
-	NUMBER_OF_OPENCL_KERNELS = 102;
+	NUMBER_OF_OPENCL_KERNELS = 104;
 
 	commandQueue = NULL;
 	program = NULL;
@@ -498,6 +498,8 @@ void BROCCOLI_LIB::SetStartValues()
     createKernelErrorCalculateStatisticalMapsGLMFTestSecondLevelPermutation = 0;
     createKernelErrorCalculateStatisticalMapsMeanSecondLevelPermutation = 0;
     createKernelErrorCalculateStatisticalMapSearchlight = 0;
+    createKernelErrorPrepareInputSearchlight = 0;
+    createKernelErrorPrepareSearchlight = 0;
     createKernelErrorTransformData = 0;
     createKernelErrorRemoveLinearFit = 0;
     createKernelErrorRemoveLinearFitSlice = 0;
@@ -1444,7 +1446,33 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 			std::ostringstream oss;
 			oss << kernelFile.rdbuf();
 			std::string src = oss.str();
-			const char *srcstr = src.c_str();
+			const char *srcstr[2];
+			srcstr[0] = src.c_str();
+			std::string src2;
+			cl_uint nsources = 1;
+
+			if (kernelPathAndFileNames[k].find("Searchlight") != std::string::npos)
+			{
+
+								printf("building searchlight %s\n", kernelPathAndFileNames[k].c_str());
+							    // Read svm code from file
+								//std::fstream svmFile("/Users/sebastian/Desktop/devel/opencl-examples/fma/elem.cl",std::ios::in);
+								//std::fstream svmFile("/Users/sebastian/Desktop/devel/libsvm-master/svm.cpp",std::ios::in);
+								//std::fstream svmFile("/Users/sebastian/Desktop/devel/parallelLibSvm/core/opencl/libsvm/kernels/libSvmTrain.cl",std::ios::in);
+								std::fstream svmFile("/Users/sebastian/Desktop/devel/BROCCOLI-fork/code/Kernels/solveSVM.cl",std::ios::in);
+								std::ostringstream oss2;
+								oss2 << svmFile.rdbuf();
+								src2 = oss2.str();
+								srcstr[1] = src2.c_str();
+								nsources = 2;
+								//nsources = 1;
+			}
+			else
+			{
+				printf("Kernel not searchligh\n");
+				srcstr[1] = NULL;
+			}
+
 
 			if ( (WRAPPER == BASH) && (VERBOS) )
 			{
@@ -1452,7 +1480,7 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 			}
 
 			// Create program 
-			OpenCLPrograms[k] = clCreateProgramWithSource(context, 1, (const char**)&srcstr , NULL, &error);
+			OpenCLPrograms[k] = clCreateProgramWithSource(context, nsources, (const char**)srcstr , NULL, &error);
 
 			if ( (WRAPPER == BASH) && (error != SUCCESS) )
 			{
@@ -1468,6 +1496,8 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 
 				// Build program for the selected device
 				sourceBuildProgramErrors[k] = clBuildProgram(OpenCLPrograms[k], 1, &deviceIds[OPENCL_DEVICE], NULL, NULL, NULL);
+
+//				sourceBuildProgramErrors[k] = clBuildProgram(OpenCLPrograms[k], 1, &deviceIds[OPENCL_DEVICE], "-I /usr/include -I /Users/sebastian/Desktop/devel/libsvm-master", NULL, NULL);
 
 				if ( (WRAPPER == BASH) && (sourceBuildProgramErrors[k] != SUCCESS) )
 				{
@@ -1825,6 +1855,12 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
     
     OpenCLKernels[101] = CalculateStatisticalMapSearchlightKernel;
     
+    PrepareInputSearchlightKernel = clCreateKernel(OpenCLPrograms[11],"PrepareInputSearchlight",&createKernelErrorPrepareInputSearchlight);
+    OpenCLKernels[102] = PrepareInputSearchlightKernel;
+
+    PrepareSearchlightKernel = clCreateKernel(OpenCLPrograms[11],"PrepareSearchlight",&createKernelErrorPrepareSearchlight);
+    OpenCLKernels[103] = PrepareSearchlightKernel;
+
 	OPENCL_INITIATED = true;
 
 	// Set all create kernel errors into an array
@@ -2292,7 +2328,9 @@ int* BROCCOLI_LIB::GetOpenCLCreateKernelErrors()
 	OpenCLCreateKernelErrors[100] = createKernelErrorGeneratePermutedVolumesFirstLevel;
     
     OpenCLCreateKernelErrors[101] = createKernelErrorCalculateStatisticalMapSearchlight;
-    
+    OpenCLCreateKernelErrors[102] = createKernelErrorPrepareInputSearchlight;
+    OpenCLCreateKernelErrors[103] = createKernelErrorPrepareSearchlight;
+
 	return OpenCLCreateKernelErrors;
 }
 
@@ -2409,6 +2447,8 @@ int* BROCCOLI_LIB::GetOpenCLRunKernelErrors()
 	OpenCLRunKernelErrors[100] = runKernelErrorGeneratePermutedVolumesFirstLevel;
     
     OpenCLRunKernelErrors[101] = runKernelErrorCalculateStatisticalMapSearchlight;
+    OpenCLRunKernelErrors[102] = runKernelErrorPrepareInputSearchlight;
+    OpenCLRunKernelErrors[103] = runKernelErrorPrepareSearchlight;
     
 	return OpenCLRunKernelErrors;
 }
@@ -3385,7 +3425,26 @@ void BROCCOLI_LIB::SetGlobalAndLocalWorkSizesSearchlight(int DATA_W, int DATA_H,
     localWorkSizeCalculateStatisticalMapSearchlight[0] = 32;
     localWorkSizeCalculateStatisticalMapSearchlight[1] = 16;
     localWorkSizeCalculateStatisticalMapSearchlight[2] = 1;
-    
+
+    // Calculate how many blocks are required
+    xBlocks = (size_t)ceil((float)DATA_W / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
+    yBlocks = (size_t)ceil((float)DATA_H / (float)localWorkSizeCalculateStatisticalMapSearchlight[1]);
+    zBlocks = (size_t)ceil((float)DATA_D / (float)localWorkSizeCalculateStatisticalMapSearchlight[2]);
+
+    // Calculate total number of threads (this is done to guarantee that total number of threads is multiple of local work size, required by OpenCL)
+    globalWorkSizeCalculateStatisticalMapSearchlight[0] = xBlocks * localWorkSizeCalculateStatisticalMapSearchlight[0];
+    globalWorkSizeCalculateStatisticalMapSearchlight[1] = yBlocks * localWorkSizeCalculateStatisticalMapSearchlight[1];
+    globalWorkSizeCalculateStatisticalMapSearchlight[2] = zBlocks * localWorkSizeCalculateStatisticalMapSearchlight[2];
+
+}
+
+/* original
+void BROCCOLI_LIB::SetGlobalAndLocalWorkSizesSearchlight(int DATA_W, int DATA_H, int DATA_D)
+{
+    localWorkSizeCalculateStatisticalMapSearchlight[0] = 32;
+    localWorkSizeCalculateStatisticalMapSearchlight[1] = 16;
+    localWorkSizeCalculateStatisticalMapSearchlight[2] = 1;
+
     // Calculate how many blocks are required
     xBlocks = (size_t)ceil((float)DATA_W / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
     yBlocks = (size_t)ceil((float)DATA_H / (float)localWorkSizeCalculateStatisticalMapSearchlight[1]);
@@ -3395,7 +3454,8 @@ void BROCCOLI_LIB::SetGlobalAndLocalWorkSizesSearchlight(int DATA_W, int DATA_H,
     globalWorkSizeCalculateStatisticalMapSearchlight[0] = xBlocks * localWorkSizeCalculateStatisticalMapSearchlight[0];
     globalWorkSizeCalculateStatisticalMapSearchlight[1] = yBlocks * localWorkSizeCalculateStatisticalMapSearchlight[1];
     globalWorkSizeCalculateStatisticalMapSearchlight[2] = zBlocks * localWorkSizeCalculateStatisticalMapSearchlight[2];
-}
+    
+} */
 
 
 
@@ -3442,6 +3502,12 @@ void BROCCOLI_LIB::SetInputMNIBrainVolume(float* data)
 void BROCCOLI_LIB::SetInputMNIBrainMask(float* data)
 {
 	h_MNI_Brain_Mask = data;
+    //    debugVolumeInfo("MNI Brain Mask", MNI_DATA_W, MNI_DATA_H, MNI_DATA_D, data);
+}
+
+void BROCCOLI_LIB::SetInputMaskIndex1D(int* data)
+{
+	h_mask_index1D = data;
     //    debugVolumeInfo("MNI Brain Mask", MNI_DATA_W, MNI_DATA_H, MNI_DATA_D, data);
 }
 
@@ -3994,6 +4060,11 @@ void BROCCOLI_LIB::SetMNIVoxelSizeY(float value)
 void BROCCOLI_LIB::SetMNIVoxelSizeZ(float value)
 {
 	MNI_VOXEL_SIZE_Z = value;
+}
+
+void BROCCOLI_LIB::SetNumberMaskVoxel(size_t voxels)
+{
+	VOXELS_MASK = voxels;
 }
 
 void BROCCOLI_LIB::SetSignificanceLevel(float value)
@@ -13056,10 +13127,95 @@ void BROCCOLI_LIB::PerformGLMFTestSecondLevelWrapper()
 }
 
 
-
-
 void BROCCOLI_LIB::PerformSearchlightWrapper()
 {
+    // Allocate memory for volumes
+    d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+    d_MNI_Brain_Mask = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
+
+    // Allocate memory for classes
+    c_Correct_Classes = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+    c_d = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+
+    // Allocate memory for results
+    d_Statistical_Maps = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
+
+    // Copy data to device
+    clEnqueueWriteBuffer(commandQueue, d_First_Level_Results, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), h_First_Level_Results , 0, NULL, NULL);
+    clEnqueueWriteBuffer(commandQueue, d_MNI_Brain_Mask, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), h_MNI_Brain_Mask , 0, NULL, NULL);
+
+    // Copy model to constant memory
+    clEnqueueWriteBuffer(commandQueue, c_Correct_Classes, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(float), h_Correct_Classes_In , 0, NULL, NULL);
+    clEnqueueWriteBuffer(commandQueue, c_d, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(float), h_d_In , 0, NULL, NULL);
+
+    // Run searchlight
+    SetGlobalAndLocalWorkSizesSearchlight(MNI_DATA_W, MNI_DATA_H, MNI_DATA_D);
+
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// PART 1): prepareInputData: Normalize between -1 and +1 each voxel across time
+	int vox_mask = (int) VOXELS_MASK;
+    int SIZ_VOLUME = MNI_DATA_W*MNI_DATA_H*MNI_DATA_D;
+    cl_mem d_mask_index1D = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * sizeof(int), NULL, NULL);
+	clEnqueueWriteBuffer(commandQueue, d_mask_index1D, CL_TRUE, 0, VOXELS_MASK * sizeof(int), h_mask_index1D , 0, NULL, NULL);
+
+	clSetKernelArg(PrepareInputSearchlightKernel, 0, sizeof(cl_mem),  &d_First_Level_Results);
+	clSetKernelArg(PrepareInputSearchlightKernel, 1, sizeof(cl_mem),  &d_mask_index1D);
+	clSetKernelArg(PrepareInputSearchlightKernel, 2, sizeof(int),  	  &NUMBER_OF_SUBJECTS);
+	clSetKernelArg(PrepareInputSearchlightKernel, 3, sizeof(int),     &SIZ_VOLUME);
+	clSetKernelArg(PrepareInputSearchlightKernel, 4, sizeof(int),     &vox_mask);
+
+	printf("Before preparing input\n");
+
+	runKernelErrorPrepareInputSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareInputSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+	clFinish(commandQueue);
+
+	printf("Input preparation finished\n");
+
+
+    float n = 0.001;
+    int EPOCS = 10;
+
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 0, sizeof(cl_mem),  &d_Statistical_Maps);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 1, sizeof(cl_mem),  &d_First_Level_Results);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 2, sizeof(cl_mem),  &d_MNI_Brain_Mask);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 3, sizeof(cl_mem),  &c_d);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 4, sizeof(cl_mem),  &c_Correct_Classes);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 5, sizeof(int),     &MNI_DATA_W);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 6, sizeof(int),     &MNI_DATA_H);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 7, sizeof(int),     &MNI_DATA_D);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 8, sizeof(int),     &NUMBER_OF_SUBJECTS);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 9, sizeof(float),   &n);
+    clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 10, sizeof(int),    &EPOCS);
+
+    for (int validation=0; validation<NUMBER_OF_SUBJECTS; validation++)
+    {
+    	printf("Fold %d\n", validation);
+        clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 11, sizeof(int),    &validation);
+    	runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 3, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+    	clFinish(commandQueue);
+    }
+
+    // Copy results to  host
+    clEnqueueReadBuffer(commandQueue, d_Statistical_Maps, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), h_Statistical_Maps_MNI, 0, NULL, NULL);
+    clFinish(commandQueue);
+
+    // Release memory
+    clReleaseMemObject(d_First_Level_Results);
+    clReleaseMemObject(d_MNI_Brain_Mask);
+
+    clReleaseMemObject(c_Correct_Classes);
+    clReleaseMemObject(c_d);
+
+    clReleaseMemObject(d_Statistical_Maps);
+    clReleaseMemObject(d_mask_index1D);
+}
+
+/*
+void BROCCOLI_LIB::PerformSearchlightWrapper()
+{
+	//if (true) return;
+	cl_mem d_mask_index1D, d_deltas, d_x_space, d_trainIndex, d_testIndex, d_alpha, d_kmatrix;
+
     // Allocate memory for volumes
     d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
     d_MNI_Brain_Mask = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
@@ -13077,14 +13233,228 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 
     // Copy model to constant memory
     clEnqueueWriteBuffer(commandQueue, c_Correct_Classes, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(float), h_Correct_Classes_In , 0, NULL, NULL);
-    clEnqueueWriteBuffer(commandQueue, c_d, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(float), h_d_In , 0, NULL, NULL);
+    clEnqueueWriteBuffer(commandQueue, c_d, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(int), h_d_In , 0, NULL, NULL);
+
+    localWorkSizeCalculateStatisticalMapSearchlight[0] = 32;
+
+    // Calculate how many blocks are required
+    xBlocks = (size_t)ceil((float)VOXELS_MASK / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
+
+    // Calculate total number of threads (this is done to guarantee that total number of threads is multiple of local work size, required by OpenCL)
+    globalWorkSizeCalculateStatisticalMapSearchlight[0] = xBlocks * localWorkSizeCalculateStatisticalMapSearchlight[0];
+
+    //printf("Setting global and local work sizes with WxHxD = %i, %i, %i\n", MNI_DATA_W, MNI_DATA_H, MNI_DATA_D);
     
     // Run searchlight
-    SetGlobalAndLocalWorkSizesSearchlight(MNI_DATA_W, MNI_DATA_H, MNI_DATA_D);
+    //SetGlobalAndLocalWorkSizesSearchlight(MNI_DATA_W, MNI_DATA_H, MNI_DATA_D);
     
     float n = 0.001;
     int EPOCS = 1;
-    
+
+	int LEAVEOUT = 1;
+	int vox_mask = (int) VOXELS_MASK;
+
+	int SIZ_VOLUME = MNI_DATA_W*MNI_DATA_H*MNI_DATA_D;
+
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// PART 1): prepareInputData: Normalize between -1 and +1 each voxel across time
+	d_mask_index1D = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * sizeof(int), NULL, NULL);
+	clEnqueueWriteBuffer(commandQueue, d_mask_index1D, CL_TRUE, 0, VOXELS_MASK * sizeof(int), h_mask_index1D , 0, NULL, NULL);
+
+	clSetKernelArg(PrepareInputSearchlightKernel, 0, sizeof(cl_mem),  &d_First_Level_Results);
+	clSetKernelArg(PrepareInputSearchlightKernel, 1, sizeof(cl_mem),  &d_mask_index1D);
+	clSetKernelArg(PrepareInputSearchlightKernel, 2, sizeof(int),  	  &NUMBER_OF_SUBJECTS);
+	clSetKernelArg(PrepareInputSearchlightKernel, 3, sizeof(int),     &SIZ_VOLUME);
+	clSetKernelArg(PrepareInputSearchlightKernel, 4, sizeof(int),     &vox_mask);
+
+	printf("Before preparing input\n");
+
+	runKernelErrorPrepareInputSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareInputSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+	clFinish(commandQueue);
+
+	printf("Input preparation finished\n");
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// PART 2): Prepare x_space, i.e. sphere representation in 1D as (voxind_mask1..voxind_maskV (subj1..subjT (feat1..featN))) and
+	// kernel matrix inf 1D as (voxind_mask1..voxind_maskV (subj1..subjT (subj1..subjT)))
+
+	// create hard coded sphere offset indexes
+	int x=0, y=0, z=0;
+	int NFEAT = 123;
+	int deltas[NFEAT];
+	deltas[0] = Calculate3DIndex(x,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[1] = Calculate3DIndex(x-1,y,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[2] = Calculate3DIndex(x,y,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[3] = Calculate3DIndex(x,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[4] = Calculate3DIndex(x+1,y,z-1,MNI_DATA_W,MNI_DATA_H);
+
+	deltas[5] = Calculate3DIndex(x-1,y-1,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[6] = Calculate3DIndex(x-1,y,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[7] = Calculate3DIndex(x-1,y+1,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[8] = Calculate3DIndex(x,y-1,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[9] = Calculate3DIndex(x,y,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[10] = Calculate3DIndex(x,y+1,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[11] = Calculate3DIndex(x+1,y-1,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[12] = Calculate3DIndex(x+1,y,z,MNI_DATA_W,MNI_DATA_H);
+	deltas[13] = Calculate3DIndex(x+1,y+1,z,MNI_DATA_W,MNI_DATA_H);
+
+	deltas[14] = Calculate3DIndex(x-1,y,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[15] = Calculate3DIndex(x,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[16] = Calculate3DIndex(x,y,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[17] = Calculate3DIndex(x+1,y,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[18] = Calculate3DIndex(x,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+
+
+	deltas[0] = Calculate3DIndex(x-1,y-2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[1] = Calculate3DIndex(x+0,y+0,z-3,MNI_DATA_W,MNI_DATA_H);
+	deltas[2] = Calculate3DIndex(x-2,y-1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[3] = Calculate3DIndex(x-2,y+0,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[4] = Calculate3DIndex(x-2,y+1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[6] = Calculate3DIndex(x-1,y-1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[7] = Calculate3DIndex(x-1,y+0,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[8] = Calculate3DIndex(x-1,y+1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[9] = Calculate3DIndex(x-1,y+2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[10] = Calculate3DIndex(x+0,y-2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[11] = Calculate3DIndex(x+0,y-1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[12] = Calculate3DIndex(x+0,y+0,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[13] = Calculate3DIndex(x+0,y+1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[14] = Calculate3DIndex(x+0,y+2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[15] = Calculate3DIndex(x+1,y-2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[16] = Calculate3DIndex(x+1,y-1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[17] = Calculate3DIndex(x+1,y+0,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[18] = Calculate3DIndex(x+1,y+1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[19] = Calculate3DIndex(x+1,y+2,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[20] = Calculate3DIndex(x+2,y-1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[21] = Calculate3DIndex(x+2,y+0,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[22] = Calculate3DIndex(x+2,y+1,z-2,MNI_DATA_W,MNI_DATA_H);
+	deltas[23] = Calculate3DIndex(x-2,y-2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[24] = Calculate3DIndex(x-2,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[25] = Calculate3DIndex(x-2,y+0,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[26] = Calculate3DIndex(x-2,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[27] = Calculate3DIndex(x-2,y+2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[28] = Calculate3DIndex(x-1,y-2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[29] = Calculate3DIndex(x-1,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[30] = Calculate3DIndex(x-1,y+0,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[31] = Calculate3DIndex(x-1,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[32] = Calculate3DIndex(x-1,y+2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[33] = Calculate3DIndex(x+0,y-2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[34] = Calculate3DIndex(x+0,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[35] = Calculate3DIndex(x+0,y+0,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[36] = Calculate3DIndex(x+0,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[37] = Calculate3DIndex(x+0,y+2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[38] = Calculate3DIndex(x+1,y-2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[39] = Calculate3DIndex(x+1,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[40] = Calculate3DIndex(x+1,y+0,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[41] = Calculate3DIndex(x+1,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[42] = Calculate3DIndex(x+1,y+2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[43] = Calculate3DIndex(x+2,y-2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[44] = Calculate3DIndex(x+2,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[45] = Calculate3DIndex(x+2,y+0,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[46] = Calculate3DIndex(x+2,y+1,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[47] = Calculate3DIndex(x+2,y+2,z-1,MNI_DATA_W,MNI_DATA_H);
+	deltas[48] = Calculate3DIndex(x-3,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[49] = Calculate3DIndex(x-2,y-2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[50] = Calculate3DIndex(x-2,y-1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[51] = Calculate3DIndex(x-2,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[52] = Calculate3DIndex(x-2,y+1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[53] = Calculate3DIndex(x-2,y+2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[54] = Calculate3DIndex(x-1,y-2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[55] = Calculate3DIndex(x-1,y-1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[56] = Calculate3DIndex(x-1,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[57] = Calculate3DIndex(x-1,y+1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[58] = Calculate3DIndex(x-1,y+2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[59] = Calculate3DIndex(x+0,y-3,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[60] = Calculate3DIndex(x+0,y-2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[61] = Calculate3DIndex(x+0,y-1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[62] = Calculate3DIndex(x+0,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[63] = Calculate3DIndex(x+0,y+1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[64] = Calculate3DIndex(x+0,y+2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[65] = Calculate3DIndex(x+0,y+3,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[66] = Calculate3DIndex(x+1,y-2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[67] = Calculate3DIndex(x+1,y-1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[68] = Calculate3DIndex(x+1,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[69] = Calculate3DIndex(x+1,y+1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[70] = Calculate3DIndex(x+1,y+2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[71] = Calculate3DIndex(x+2,y-2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[72] = Calculate3DIndex(x+2,y-1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[73] = Calculate3DIndex(x+2,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[74] = Calculate3DIndex(x+2,y+1,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[75] = Calculate3DIndex(x+2,y+2,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[76] = Calculate3DIndex(x+3,y+0,z+0,MNI_DATA_W,MNI_DATA_H);
+	deltas[77] = Calculate3DIndex(x-2,y-2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[78] = Calculate3DIndex(x-2,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[79] = Calculate3DIndex(x-2,y+0,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[80] = Calculate3DIndex(x-2,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[81] = Calculate3DIndex(x-2,y+2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[82] = Calculate3DIndex(x-1,y-2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[83] = Calculate3DIndex(x-1,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[84] = Calculate3DIndex(x-1,y+0,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[85] = Calculate3DIndex(x-1,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[86] = Calculate3DIndex(x-1,y+2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[87] = Calculate3DIndex(x+0,y-2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[88] = Calculate3DIndex(x+0,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[89] = Calculate3DIndex(x+0,y+0,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[90] = Calculate3DIndex(x+0,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[91] = Calculate3DIndex(x+0,y+2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[92] = Calculate3DIndex(x+1,y-2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[93] = Calculate3DIndex(x+1,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[94] = Calculate3DIndex(x+1,y+0,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[95] = Calculate3DIndex(x+1,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[96] = Calculate3DIndex(x+1,y+2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[97] = Calculate3DIndex(x+2,y-2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[98] = Calculate3DIndex(x+2,y-1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[99] = Calculate3DIndex(x+2,y+0,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[100] = Calculate3DIndex(x+2,y+1,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[101] = Calculate3DIndex(x+2,y+2,z+1,MNI_DATA_W,MNI_DATA_H);
+	deltas[102] = Calculate3DIndex(x-2,y-1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[103] = Calculate3DIndex(x-2,y+0,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[104] = Calculate3DIndex(x-2,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[105] = Calculate3DIndex(x-1,y-2,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[106] = Calculate3DIndex(x-1,y-1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[107] = Calculate3DIndex(x-1,y+0,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[108] = Calculate3DIndex(x-1,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[109] = Calculate3DIndex(x-1,y+2,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[110] = Calculate3DIndex(x+0,y-2,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[111] = Calculate3DIndex(x+0,y-1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[112] = Calculate3DIndex(x+0,y+0,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[113] = Calculate3DIndex(x+0,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[114] = Calculate3DIndex(x+0,y+2,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[115] = Calculate3DIndex(x+1,y-2,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[116] = Calculate3DIndex(x+1,y-1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[117] = Calculate3DIndex(x+1,y+0,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[118] = Calculate3DIndex(x+1,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[119] = Calculate3DIndex(x+0,y+0,z+3,MNI_DATA_W,MNI_DATA_H);
+	deltas[120] = Calculate3DIndex(x+2,y-1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[121] = Calculate3DIndex(x+2,y+0,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[5] = Calculate3DIndex(x+2,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
+	deltas[122] = Calculate3DIndex(x+1,y+2,z+2,MNI_DATA_W,MNI_DATA_H);
+
+	d_deltas = clCreateBuffer(context, CL_MEM_READ_ONLY, NFEAT * sizeof(int), NULL, NULL);
+	clEnqueueWriteBuffer(commandQueue, d_deltas, CL_TRUE, 0, NFEAT* sizeof(int), deltas , 0, NULL, NULL);
+
+    d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
+    d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+
+	clSetKernelArg(PrepareSearchlightKernel, 0, sizeof(cl_mem),  &d_First_Level_Results);
+	clSetKernelArg(PrepareSearchlightKernel, 1, sizeof(cl_mem),  &d_mask_index1D);
+	clSetKernelArg(PrepareSearchlightKernel, 2, sizeof(cl_mem),  &d_deltas);
+	clSetKernelArg(PrepareSearchlightKernel, 3, sizeof(int),     &SIZ_VOLUME);
+	clSetKernelArg(PrepareSearchlightKernel, 4, sizeof(int),     &NUMBER_OF_SUBJECTS);
+	clSetKernelArg(PrepareSearchlightKernel, 5, sizeof(int),     &vox_mask);
+	clSetKernelArg(PrepareSearchlightKernel, 6, sizeof(int),     &NFEAT);
+	clSetKernelArg(PrepareSearchlightKernel, 7, sizeof(cl_mem),  &d_x_space);
+	clSetKernelArg(PrepareSearchlightKernel, 8, sizeof(cl_mem),  &d_kmatrix);
+
+	printf("Before preparing x-space and kernel matrix\n");
+
+	runKernelErrorPrepareSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+	clFinish(commandQueue);
+
+	printf("x-space and kernel matrix prepared\n");
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// PART 3): Searchlight SVM
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 0, sizeof(cl_mem),  &d_Statistical_Maps);
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 1, sizeof(cl_mem),  &d_First_Level_Results);
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 2, sizeof(cl_mem),  &d_MNI_Brain_Mask);
@@ -13096,10 +13466,41 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 8, sizeof(int),     &NUMBER_OF_SUBJECTS);
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 9, sizeof(float),   &n);
     clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 10, sizeof(int),    &EPOCS);
-    
-    runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 3, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
-    clFinish(commandQueue);
 
+    if (true)
+    {
+        d_trainIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(int), NULL, NULL);
+        d_testIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * LEAVEOUT* sizeof(int), NULL, NULL);
+        d_alpha 	 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(float), NULL, NULL);
+
+        clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 11, sizeof(cl_mem),  	&d_x_space); // x_space
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 12, sizeof(cl_mem), 	&d_trainIndex); // trainIndex
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 13, sizeof(cl_mem),  	&d_testIndex); // testIndex
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 14, sizeof(cl_mem),  	&d_alpha); // alpha
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 15, sizeof(cl_mem), 	&d_mask_index1D); // voxel indices 1D
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 16, sizeof(cl_mem),  	&d_deltas); // delta indices
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 17, sizeof(int),  		&vox_mask); // voxels in mask
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 18, sizeof(cl_mem),  	&d_kmatrix); // kernel matrix
+		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 19, sizeof(int),  		&NFEAT); // number of features
+    }
+
+    printf("Before searchlight svm\n");
+
+   for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
+   {
+	   printf(" Fold %d\n",k+1);
+	   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
+	   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+	   clFinish(commandQueue);
+
+
+
+   }
+
+   // runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 3, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
+
+
+    printf("After searchlight svm");
     // Copy results to  host
     clEnqueueReadBuffer(commandQueue, d_Statistical_Maps, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), h_Statistical_Maps_MNI, 0, NULL, NULL);
     clFinish(commandQueue);    
@@ -13112,7 +13513,14 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     clReleaseMemObject(c_d);
     
     clReleaseMemObject(d_Statistical_Maps);
-}
+    clReleaseMemObject(d_mask_index1D);
+    clReleaseMemObject(d_deltas);
+    clReleaseMemObject(d_x_space);
+    clReleaseMemObject(d_trainIndex);
+    clReleaseMemObject(d_testIndex);
+    clReleaseMemObject(d_alpha);
+    //clReleaseMemObject(d_predicted);
+}*/
 
 
 void BROCCOLI_LIB::PerformMeanSecondLevelPermutationWrapper()
@@ -15500,6 +15908,7 @@ void BROCCOLI_LIB::CalculateStatisticalMapsGLMBayesianFirstLevel(float* h_Volume
 		PerformDetrendingAndMotionRegressionSlice(d_Regressed_Volumes, d_Volumes, slice, EPI_DATA_W, EPI_DATA_H, EPI_DATA_D, EPI_DATA_T);
 
 		// Calculate PPM(s)
+		/*
 		clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 0, sizeof(cl_mem), &d_Statistical_Maps);
 		clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 1, sizeof(cl_mem), &d_Beta_Volumes);
 		clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 2, sizeof(cl_mem), &d_AR1_Estimates);
@@ -15519,7 +15928,7 @@ void BROCCOLI_LIB::CalculateStatisticalMapsGLMBayesianFirstLevel(float* h_Volume
 		clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 16, sizeof(int),   &NUMBER_OF_MCMC_ITERATIONS);
 		clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 17, sizeof(int),   &slice);
 		runKernelErrorCalculateStatisticalMapsGLMBayesian = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapsGLMBayesianKernel, 3, NULL, globalWorkSizeCalculateStatisticalMapsGLM, 	localWorkSizeCalculateStatisticalMapsGLM, 0, NULL, NULL);
-		clFinish(commandQueue);
+		clFinish(commandQueue);*/
 	}
 
 	free(h_X_GLM_);
@@ -15642,6 +16051,7 @@ void BROCCOLI_LIB::PerformBayesianFirstLevelWrapper()
 	int NUMBER_OF_ITERATIONS = 1000;
 
 	// Calculate PPM(s)
+	/*
 	clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 0, sizeof(cl_mem), &d_Statistical_Maps);
 	clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 1, sizeof(cl_mem), &d_Regressed_Volumes);
 	clSetKernelArg(CalculateStatisticalMapsGLMBayesianKernel, 2, sizeof(cl_mem), &d_EPI_Mask);
@@ -15662,7 +16072,7 @@ void BROCCOLI_LIB::PerformBayesianFirstLevelWrapper()
 
 	// Copy results to  host
 	clEnqueueReadBuffer(commandQueue, d_Statistical_Maps, CL_TRUE, 0, EPI_DATA_W * EPI_DATA_H * EPI_DATA_D * NUMBER_OF_CONTRASTS * sizeof(float), h_Statistical_Maps_EPI, 0, NULL, NULL);
-
+*/
 	// Release memory
 
 	clReleaseMemObject(d_fMRI_Volumes);

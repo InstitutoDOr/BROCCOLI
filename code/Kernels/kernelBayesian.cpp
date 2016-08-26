@@ -318,8 +318,7 @@ float  myabs(float value)
 }
 
 // Generates a posterior probability map (PPM) using Gibbs sampling
-
-__kernel void CalculateStatisticalMapsGLMBayesian(__global float* Statistical_Maps,
+/*__kernel void CalculateStatisticalMapsGLMBayesian_(__global float* Statistical_Maps,
 												  __global float* Beta_Volumes,
 												  __global float* AR_Estimates,
 		                                          __global const float* Volumes,
@@ -330,6 +329,27 @@ __kernel void CalculateStatisticalMapsGLMBayesian(__global float* Statistical_Ma
 											      __constant float* c_S00,
 											      __constant float* c_S01,
 											      __constant float* c_S11,
+		                                          __private int DATA_W,
+		                                          __private int DATA_H,
+		                                          __private int DATA_D,
+		                                          __private int NUMBER_OF_VOLUMES,
+		                                          __private int NUMBER_OF_REGRESSORS,
+											      __private int NUMBER_OF_ITERATIONS,
+												  __private int slice)
+*/
+
+
+__kernel void CalculateStatisticalMapsGLMBayesian(__global float* Statistical_Maps,
+												  __global float* Beta_Volumes,
+												  __global float* AR_Estimates,
+		                                          __global const float* Volumes,
+		                                          __global const float* Mask,
+		                                          __global const int* Seeds,
+		                                          __local float* c_X_GLM,
+		                                          __local float* c_InvOmega0,
+											      __local float* c_S00,
+											      __local float* c_S01,
+											      __local float* c_S11,
 		                                          __private int DATA_W,
 		                                          __private int DATA_H,
 		                                          __private int DATA_D,

@@ -232,6 +232,7 @@ void AllocateMemory(float *& pointer, size_t size, void** pointers, int& Npointe
     }
 }
 
+
 void AllocateMemoryInt(unsigned short int *& pointer, size_t size, void** pointers, int& Npointers, nifti_image** niftiImages, int Nimages, size_t allocatedMemory, const char* variable)
 {
     pointer = (unsigned short int*)malloc(size);
@@ -248,6 +249,25 @@ void AllocateMemoryInt(unsigned short int *& pointer, size_t size, void** pointe
 		FreeAllMemory(pointers, Npointers);
 		FreeAllNiftiImages(niftiImages, Nimages);
 		exit(EXIT_FAILURE);        
+    }
+}
+
+void AllocateMemoryInt2( int *& pointer, size_t size, void** pointers, int& Npointers, nifti_image** niftiImages, int Nimages, size_t allocatedMemory, const char* variable)
+{
+    pointer = (int*)malloc(size);
+    if (pointer != NULL)
+    {
+        pointers[Npointers] = (void*)pointer;
+        Npointers++;
+		allocatedMemory += size;
+    }
+    else
+    {
+		perror ("The following error occurred");
+        printf("Could not allocate host memory for variable %s ! \n",variable);
+		FreeAllMemory(pointers, Npointers);
+		FreeAllNiftiImages(niftiImages, Nimages);
+		exit(EXIT_FAILURE);
     }
 }
 
