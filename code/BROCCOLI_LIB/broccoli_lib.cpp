@@ -13435,7 +13435,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 
 
     // divide voxels in batches to avoid out of resources (depends on GPU memory/performance)
-    int NUM_VOXELS_BATCH = 10000;
+    int NUM_VOXELS_BATCH = 5000;
 
     d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
     d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
@@ -13509,9 +13509,10 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 
 		printf("Before searchlight svm\n");
 
+		printf(" Fold ");
 		for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
 		{
-		   printf(" Fold %d\n",k+1);
+		   printf("%d ",k+1);
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &voxoffset);
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxbatchsize);
@@ -13519,6 +13520,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
 		   clFinish(commandQueue);
 		}
+		printf("\n");
     } // batches
 
     printf("After searchlight svm");

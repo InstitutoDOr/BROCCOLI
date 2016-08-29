@@ -821,7 +821,7 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 
 }
 
-__kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier_Performance, 	// 0
+__kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Performance, 	// 0
 												  __global const float* Volumes, 			// 1
                                                   __global const float* Mask, 				// 2
                                                   __constant float* c_d, 					// 3
@@ -846,6 +846,9 @@ __kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier
 									              __private int voxbatchsize)				// 22
 {
     int voxind = get_global_id(0);
+
+    if (voxind >= voxbatchsize)
+    	return;
 
     // apply voxbatchoffset
     int voxindWithOffset = voxind+voxbatchoffset;
@@ -873,6 +876,7 @@ __kernel void CalculateStatisticalMapSearchlight_SVM( __global float* Classifier
 
     float margin = doFold( x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex+trainOffset, testIndex+voxindWithOffset, NFEAT, alph+trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix+voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold);
 
+    //float margin = 0;
  /*   if (testvoxIndex == volumeId)
     		printf("margin=%f verdadeiro=%f\n", margin, c_d[fold]);
 */
@@ -1313,7 +1317,7 @@ __kernel void CalculateStatisticalMapSearchlight_33(__global float* Classifier_P
 }
 
 // sphere radius of 3 voxels resulting in 123 voxels
-__kernel void CalculateStatisticalMapSearchlight(__global float* Classifier_Performance,
+__kernel void CalculateStatisticalMapSearchlight_123(__global float* Classifier_Performance,
                                                      __global const float* Volumes,
                                                      __global const float* Mask,
                                                      __constant float* c_d,
