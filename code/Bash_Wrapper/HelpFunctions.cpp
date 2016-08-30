@@ -1,6 +1,10 @@
 
 #include <time.h>
-#include <sys/time.h>
+#include "HelpFunctions.h"
+
+#define NOMINMAX
+
+//#include <windows.h>
 
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename)
 {
@@ -413,12 +417,24 @@ bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool
 
 double GetWallTime()
 {
-    struct timeval time;
-    if (gettimeofday(&time,NULL))
-    {
-        //  Handle error
-        return 0;
-    }
-    return (double)time.tv_sec + (double)time.tv_usec * .000001;
+
+	return 0;
+
 }
 
+/*double GetWallTime()
+{
+
+#ifdef _WIN32
+	return (double)GetTickCount() * 1000;
+#else
+	struct timeval time;
+	if (gettimeofday(&time, NULL))
+	{
+		//  Handle error
+		return 0;
+	}
+	return (double)time.tv_sec + (double)time.tv_usec * .000001;
+#endif
+}
+*/

@@ -31,7 +31,7 @@
 #include <opencl.h>
 #include <string>
 #include <vector>
-#include <Dense>
+#include <Eigen/Dense>
 
 typedef unsigned int uint;
 typedef unsigned char uchar;
@@ -457,8 +457,10 @@ class BROCCOLI_LIB
 		void PerformFirstLevelAnalysisWrapper();
 		void PerformSecondLevelAnalysisWrapper();
 
+#ifdef __linux
 		void PerformICAWrapper();
 		void PerformICADoubleWrapper();
+#endif		
 		void PerformICACPUWrapper();
 		void PerformICADoubleCPUWrapper();
 
@@ -584,8 +586,10 @@ class BROCCOLI_LIB
 
 		void PCAWhiten(Eigen::MatrixXd &, Eigen::MatrixXd &, int, bool);
 		Eigen::MatrixXf PCAWhiten(Eigen::MatrixXf &, bool);
+#ifdef __linux
 		void InfomaxICA(Eigen::MatrixXf & whitenedData, Eigen::MatrixXf & weights, Eigen::MatrixXf & sourceMatrix);
 		void InfomaxICADouble(Eigen::MatrixXd & whitenedData, Eigen::MatrixXd & weights, Eigen::MatrixXd & sourceMatrix);
+#endif		
 		int UpdateInfomaxWeights(cl_mem d_Weights, cl_mem d_Whitened_Data, cl_mem d_Bias, cl_mem d_Permutation, cl_mem d_Shuffled_Whitened_Data, double updateRate);
 		int UpdateInfomaxWeightsDouble(cl_mem d_Weights, cl_mem d_Whitened_Data, cl_mem d_Bias, cl_mem d_Permutation, cl_mem d_Shuffled_Whitened_Data, double updateRate);
 

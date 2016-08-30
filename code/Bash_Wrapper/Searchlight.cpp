@@ -26,7 +26,7 @@
 #include <iomanip>
 #include <math.h>
 
-#include "HelpFunctions.cpp"
+#include "HelpFunctions.h"
 
 #define ADD_FILENAME true
 #define DONT_ADD_FILENAME true

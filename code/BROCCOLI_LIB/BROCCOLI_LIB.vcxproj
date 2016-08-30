@@ -30,9 +30,10 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>StaticLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <CharacterSet>MultiByte</CharacterSet>
+    <PlatformToolset>v120</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>StaticLibrary</ConfigurationType>
@@ -54,7 +55,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 5.0.props" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.5.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
@@ -71,17 +72,19 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
+    <IncludePath>E:\BROCCOLI\code\BROCCOLI_LIB\clBLASMac;\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB;$(IncludePath);E:\ProgramFiles\NVIDIA\Toolkit\include\CL</IncludePath>
+    <SourcePath>$(VC_SourcePath);\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\wande\Documents\GitHub\BROCCOLI\code\BROCCOLI_LIB\Eigen;C:\Users\wande\Documents\Visual Studio 2010\Projects\BROCCOLI_LIB\Eigen;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\niftilib;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\znzlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include\CL;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include;C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.0\common\inc;$(IncludePath)</IncludePath>
+    <IncludePath>\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB\Eigen;\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB\nifticlib-2.0.0\niftilib;\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB\nifticlib-2.0.0\znzlib;E:\ProgramFiles\NVIDIA\Toolkit\include\CL;E:\ProgramFiles\NVIDIA\Toolkit\include;E:\ProgramFiles\NVIDIA\Toolkit\common\inc;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Users\wande\Documents\GitHub\BROCCOLI\code\BROCCOLI_LIB\Eigen;C:\Users\wande\Documents\Visual Studio 2010\Projects\BROCCOLI_LIB\Eigen;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\niftilib;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\znzlib;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include\CL;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v5.0\include;C:\ProgramData\NVIDIA Corporation\CUDA Samples\v5.0\common\inc;$(IncludePath)</IncludePath>
+    <IncludePath>\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB\Eigen;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\niftilib;C:\Users\wande\Documents\Visual Studio 2012\Projects\BROCCOLI_LIB\nifticlib-2.0.0\znzlib;E:\ProgramFiles\NVIDIA\Toolkit\include\CL;E:\ProgramFiles\NVIDIA\Toolkit\include;E:\ProgramFiles\NVIDIA\Samples\common\inc;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -91,7 +94,7 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opencl.lib;cudart.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>echo copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"
@@ -160,6 +163,6 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
-    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 5.0.targets" />
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 7.5.targets" />
   </ImportGroup>
 </Project>

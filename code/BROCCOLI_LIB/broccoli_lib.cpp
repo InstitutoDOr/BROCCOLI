@@ -25,7 +25,7 @@
 
 #include <Eigen/Eigenvalues> 
 #include <limits>
-#include <Dense>
+#include <Eigen/Dense>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -39,8 +39,10 @@
 #include <math.h>
 #include <cfloat>
 
+#define NOMINMAX
+
 #include <time.h>
-#include <sys/time.h>
+#include <windows.h>
 
 #include <limits.h>
 //#include <unistd.h>
@@ -82,6 +84,9 @@ float mymax(float a, float b)
 
 double GetTime()
 {
+#ifdef _WIN32
+	return (double) GetTickCount()*1000;
+#else
     struct timeval time;
     if (gettimeofday(&time,NULL))
     {
@@ -89,6 +94,7 @@ double GetTime()
         return 0;
     }
     return (double)time.tv_sec + (double)time.tv_usec * .000001;
+#endif
 }
 
 float myround(float a)
@@ -170,7 +176,7 @@ void BROCCOLI_LIB::SetVerbose(bool verbos)
 	VERBOS = verbos;
 }
 
-void BROCCOLI_LIB::SetAllocatedHostMemory(unsigned long int allocated)
+void BROCCOLI_LIB::SetAllocatedHostMemory(size_t allocated)
 {
 	allocatedHostMemory = allocated;
 }
@@ -1456,10 +1462,9 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 
 								printf("building searchlight %s\n", kernelPathAndFileNames[k].c_str());
 							    // Read svm code from file
-								//std::fstream svmFile("/Users/sebastian/Desktop/devel/opencl-examples/fma/elem.cl",std::ios::in);
-								//std::fstream svmFile("/Users/sebastian/Desktop/devel/libsvm-master/svm.cpp",std::ios::in);
-								//std::fstream svmFile("/Users/sebastian/Desktop/devel/parallelLibSvm/core/opencl/libsvm/kernels/libSvmTrain.cl",std::ios::in);
-								std::fstream svmFile("/Users/sebastian/Desktop/devel/BROCCOLI-fork/code/Kernels/solveSVM.cl",std::ios::in);
+								std::string temp = OpenCLPath;
+								temp.append("solveSVM.cl");
+								std::fstream svmFile(temp,std::ios::in);
 								std::ostringstream oss2;
 								oss2 << svmFile.rdbuf();
 								src2 = oss2.str();
@@ -13235,7 +13240,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
     clEnqueueWriteBuffer(commandQueue, c_Correct_Classes, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(float), h_Correct_Classes_In , 0, NULL, NULL);
     clEnqueueWriteBuffer(commandQueue, c_d, CL_TRUE, 0, NUMBER_OF_SUBJECTS * sizeof(int), h_d_In , 0, NULL, NULL);
 
-    localWorkSizeCalculateStatisticalMapSearchlight[0] = 32;
+    localWorkSizeCalculateStatisticalMapSearchlight[0] = 512;
 
     // Calculate how many blocks are required
     xBlocks = (size_t)ceil((float)VOXELS_MASK / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
@@ -13281,7 +13286,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 
 	// create hard coded sphere offset indexes
 	int x=0, y=0, z=0;
-	int NFEAT = 123;
+	const int NFEAT = 123;
 	int deltas[NFEAT];
 	deltas[0] = Calculate3DIndex(x,y-1,z-1,MNI_DATA_W,MNI_DATA_H);
 	deltas[1] = Calculate3DIndex(x-1,y,z-1,MNI_DATA_W,MNI_DATA_H);
@@ -13435,7 +13440,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 
 
     // divide voxels in batches to avoid out of resources (depends on GPU memory/performance)
-    int NUM_VOXELS_BATCH = 5000;
+    int NUM_VOXELS_BATCH = 7500;
 
     d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
     d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
@@ -13465,7 +13470,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		clSetKernelArg(PrepareSearchlightKernel, 9, sizeof(int),     &voxoffset);
 		clSetKernelArg(PrepareSearchlightKernel, 10, sizeof(int),    &voxbatchsize);
 
-		printf("Before preparing x-space and kernel matrix\n");
+		//printf("Before preparing x-space and kernel matrix\n");
 
 		// Calculate how many blocks are required
 		xBlocks = (size_t)ceil((float)voxbatchsize / (float)localWorkSizeCalculateStatisticalMapSearchlight[0]);
@@ -13476,7 +13481,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		runKernelErrorPrepareSearchlight = clEnqueueNDRangeKernel(commandQueue, PrepareSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
 		clFinish(commandQueue);
 
-		printf("x-space and kernel matrix prepared\n");
+		//printf("x-space and kernel matrix prepared\n");
 
 		////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 		// PART 3): Searchlight SVM
@@ -13507,12 +13512,12 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 18, sizeof(cl_mem),  	&d_kmatrix); // kernel matrix
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 19, sizeof(int),  		&NFEAT); // number of features
 
-		printf("Before searchlight svm\n");
+		//printf("Before searchlight svm\n");
 
-		printf(" Fold ");
+		//printf(" Fold ");
 		for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
 		{
-		   printf("%d ",k+1);
+		   //printf("%d ",k+1);
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &voxoffset);
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxbatchsize);
@@ -13520,7 +13525,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 		   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
 		   clFinish(commandQueue);
 		}
-		printf("\n");
+		//printf("\n");
     } // batches
 
     printf("After searchlight svm");
@@ -17806,10 +17811,10 @@ Eigen::MatrixXd BROCCOLI_LIB::SetupGLMRegressorsFirstLevel()
 	std::vector<Eigen::VectorXd> allQuadraticRegressors;
 	std::vector<Eigen::VectorXd> allCubicRegressors;
 
-	bool meanRegressor[NUMBER_OF_TOTAL_GLM_REGRESSORS];
-	bool detrendingRegressor[NUMBER_OF_TOTAL_GLM_REGRESSORS];
-	int  detrendingRegressorRun[NUMBER_OF_TOTAL_GLM_REGRESSORS];
-	int totalTRs[NUMBER_OF_RUNS];
+	std::vector<bool> meanRegressor(NUMBER_OF_TOTAL_GLM_REGRESSORS,0);
+	std::vector<bool> detrendingRegressor(NUMBER_OF_TOTAL_GLM_REGRESSORS,0);
+	std::vector<int>  detrendingRegressorRun(NUMBER_OF_TOTAL_GLM_REGRESSORS,0);
+	std::vector<int>  totalTRs(NUMBER_OF_RUNS,0);
 
 	for (int r = 0; r < NUMBER_OF_TOTAL_GLM_REGRESSORS; r++)
 	{
@@ -21155,7 +21160,7 @@ void BROCCOLI_LIB::PerformICADoubleCPUWrapper()
 	clReleaseMemObject(d_EPI_Mask);
 }
 
-
+#ifdef __linux
 void BROCCOLI_LIB::PerformICAWrapper()
 {
 	#ifdef __linux
@@ -21476,3 +21481,4 @@ void BROCCOLI_LIB::PerformICADoubleWrapper()
 	#endif
 }
 
+#endif
