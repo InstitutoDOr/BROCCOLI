@@ -13430,6 +13430,8 @@ void BROCCOLI_LIB::PerformSearchlightWrapper()
 	deltas[5] = Calculate3DIndex(x+2,y+1,z+2,MNI_DATA_W,MNI_DATA_H);
 	deltas[122] = Calculate3DIndex(x+1,y+2,z+2,MNI_DATA_W,MNI_DATA_H);
 
+
+
 	d_deltas = clCreateBuffer(context, CL_MEM_READ_ONLY, NFEAT * sizeof(int), NULL, NULL);
 	clEnqueueWriteBuffer(commandQueue, d_deltas, CL_TRUE, 0, NFEAT* sizeof(int), deltas , 0, NULL, NULL);
 

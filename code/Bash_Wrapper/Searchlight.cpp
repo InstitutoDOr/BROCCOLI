@@ -25,6 +25,7 @@
 #include <sstream>
 #include <iomanip>
 #include <math.h>
+#include <string>
 
 #include "HelpFunctions.cpp"
 
@@ -867,88 +868,124 @@ int main(int argc, char **argv)
 
         // Run the permutation test
 
-		startTime = GetWallTime();
-        BROCCOLI.PerformSearchlightWrapper();
-		endTime = GetWallTime();
+		// Create new nifti image only once
+		nifti_image *outputNifti = nifti_copy_nim_info(inputData);
+		nifti_free_extensions(outputNifti);
 
-		if (VERBOS)
-	 	{
-			printf("\nIt took %f seconds to run the searchlight\n",(float)(endTime - startTime));
+		// Change number of output volumes
+		outputNifti->nt = 1;
+		outputNifti->dim[4] = 1;
+		outputNifti->nvox = DATA_W * DATA_H * DATA_D;
+
+		allNiftiImages[numberOfNiftiImages] = outputNifti;
+		numberOfNiftiImages++;
+
+
+		for (int k=0; k <= NUMBER_OF_PERMUTATIONS; ++k)
+		{
+
+			// first pass is with true labels
+			if (k>0)
+			{
+				// shuffle
+				size_t i;
+				for (i = 0; i < NUMBER_OF_VOLUMES - 1; i++)
+				{
+				  size_t j = i + rand() / (RAND_MAX / (NUMBER_OF_VOLUMES - i) + 1);
+				  float t = h_d[j];
+				  h_d[j] = h_d[i];
+				  h_d[i] = t;
+				}
+
+			}
+
+			startTime = GetWallTime();
+			BROCCOLI.PerformSearchlightWrapper();
+			endTime = GetWallTime();
+
+			if (VERBOS)
+			{
+				printf("\nIt took %f seconds to run the searchlight\n",(float)(endTime - startTime));
+			}
+
+			// Print create buffer errors
+			int* createBufferErrors = BROCCOLI.GetOpenCLCreateBufferErrors();
+			for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
+			{
+				if (createBufferErrors[i] != 0)
+				{
+					printf("Create buffer error %i is %s \n",i,BROCCOLI.GetOpenCLErrorMessage(createBufferErrors[i]));
+				}
+			}
+
+			// Print create kernel errors
+			int* createKernelErrors = BROCCOLI.GetOpenCLCreateKernelErrors();
+			for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
+			{
+				if (createKernelErrors[i] != 0)
+				{
+					printf("Create kernel error for kernel '%s' is '%s' \n",BROCCOLI.GetOpenCLKernelName(i),BROCCOLI.GetOpenCLErrorMessage(createKernelErrors[i]));
+				}
+			}
+
+			// Print run kernel errors
+			int* runKernelErrors = BROCCOLI.GetOpenCLRunKernelErrors();
+			for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
+			{
+				if (runKernelErrors[i] != 0)
+				{
+					printf("Run kernel error for kernel '%s' is '%s' \n",BROCCOLI.GetOpenCLKernelName(i),BROCCOLI.GetOpenCLErrorMessage(runKernelErrors[i]));
+				}
+			}
+
+			if (k==0)
+			{
+				if (!CHANGE_OUTPUT_NAME)
+				{
+					nifti_set_filenames(outputNifti, inputData->fname, 0, 1);
+				}
+				else
+				{
+					nifti_set_filenames(outputNifti, outputFilename, 0, 1);
+				}
+			}
+			else
+			{
+				char buffer[256]; sprintf(buffer, "%05d", k);
+				std::string str(buffer);
+
+				if (!CHANGE_OUTPUT_NAME)
+				{
+					std::string buf(inputData->fname);
+					buf.append(str);
+					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
+				}
+				else
+				{
+					std::string buf(outputFilename);
+					buf.append(str);
+					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
+				}
+			}
+
+			startTime = GetWallTime();
+
+			WriteNifti(outputNifti,h_Classifier_Performance,"_classifier_performance",ADD_FILENAME,DONT_CHECK_EXISTING_FILE);
+
+			endTime = GetWallTime();
+
+			if (VERBOS)
+			{
+				printf("It took %f seconds to write the nifti file(s)\n",(float)(endTime - startTime));
+			}
 		}
 
-        // Print create buffer errors
-        int* createBufferErrors = BROCCOLI.GetOpenCLCreateBufferErrors();
-        for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
-        {
-            if (createBufferErrors[i] != 0)
-            {
-                printf("Create buffer error %i is %s \n",i,BROCCOLI.GetOpenCLErrorMessage(createBufferErrors[i]));
-            }
-        }
-        
-        // Print create kernel errors
-        int* createKernelErrors = BROCCOLI.GetOpenCLCreateKernelErrors();
-        for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
-        {
-            if (createKernelErrors[i] != 0)
-            {
-                printf("Create kernel error for kernel '%s' is '%s' \n",BROCCOLI.GetOpenCLKernelName(i),BROCCOLI.GetOpenCLErrorMessage(createKernelErrors[i]));
-            }
-        } 
+		// Free all memory
+		FreeAllMemory(allMemoryPointers,numberOfMemoryPointers);
+		FreeAllNiftiImages(allNiftiImages,numberOfNiftiImages);
 
-        // Print run kernel errors
-        int* runKernelErrors = BROCCOLI.GetOpenCLRunKernelErrors();
-        for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
-        {
-            if (runKernelErrors[i] != 0)
-            {
-                printf("Run kernel error for kernel '%s' is '%s' \n",BROCCOLI.GetOpenCLKernelName(i),BROCCOLI.GetOpenCLErrorMessage(runKernelErrors[i]));
-            }
-        } 
-    }        
-       
-
-
-
-
-    // Create new nifti image
-	nifti_image *outputNifti = nifti_copy_nim_info(inputData);      
-	nifti_free_extensions(outputNifti);
-
-    // Change number of output volumes
-    outputNifti->nt = 1;
-    outputNifti->dim[4] = 1;
-    outputNifti->nvox = DATA_W * DATA_H * DATA_D;
-	
-                        
-	allNiftiImages[numberOfNiftiImages] = outputNifti;
-	numberOfNiftiImages++;    
-
-	if (!CHANGE_OUTPUT_NAME)
-	{
-    	nifti_set_filenames(outputNifti, inputData->fname, 0, 1);    
-	}
-	else
-	{
-		nifti_set_filenames(outputNifti, outputFilename, 0, 1);    
-	}
-
-    startTime = GetWallTime(); 
-        
-    WriteNifti(outputNifti,h_Classifier_Performance,"_classifier_performance",ADD_FILENAME,DONT_CHECK_EXISTING_FILE);
-
-	endTime = GetWallTime();
-
-	if (VERBOS)
- 	{
-		printf("It took %f seconds to write the nifti file(s)\n",(float)(endTime - startTime));
-	}
-
-    // Free all memory
-    FreeAllMemory(allMemoryPointers,numberOfMemoryPointers);
-    FreeAllNiftiImages(allNiftiImages,numberOfNiftiImages);
-
-    return EXIT_SUCCESS;
+		return EXIT_SUCCESS;
+    }
 }
 
 
