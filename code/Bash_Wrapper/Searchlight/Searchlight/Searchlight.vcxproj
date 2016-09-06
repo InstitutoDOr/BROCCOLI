@@ -41,13 +41,13 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>$(IncludePath);E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\include;E:\Arquivos de Programas (x86)\Microsoft Visual Studio 12.0\VC\include;E:\ProgramFiles\NVIDIA\Toolkit\include\;E:\ProgramFiles\NVIDIA\Toolkit\include\CL;E:\BROCCOLI\code\BROCCOLI_LIB</IncludePath>
-    <LibraryPath>E:\ProgramFiles\NVIDIA\Toolkit\lib\Win32;E:\BROCCOLI\code\BROCCOLI_LIB\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\znzlib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\niftilib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\zlib\BUILD\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
+    <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\Debug;$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(IncludePath);E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\include;E:\Arquivos de Programas (x86)\Microsoft Visual Studio 12.0\VC\include;E:\ProgramFiles\NVIDIA\Toolkit\include\;E:\ProgramFiles\NVIDIA\Toolkit\include\CL;E:\BROCCOLI\code\BROCCOLI_LIB</IncludePath>
-    <LibraryPath>E:\ProgramFiles\NVIDIA\Toolkit\lib\Win32;E:\BROCCOLI\code\BROCCOLI_LIB\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\znzlib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\niftilib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\zlib\BUILD\Release;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
+    <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\Debug;$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
