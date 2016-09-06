@@ -46,6 +46,8 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
+    <IncludePath>$(IncludePath);E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\include;E:\Arquivos de Programas (x86)\Microsoft Visual Studio 12.0\VC\include;E:\ProgramFiles\NVIDIA\Toolkit\include\;E:\ProgramFiles\NVIDIA\Toolkit\include\CL;E:\BROCCOLI\code\BROCCOLI_LIB</IncludePath>
+    <LibraryPath>E:\ProgramFiles\NVIDIA\Toolkit\lib\Win32;E:\BROCCOLI\code\BROCCOLI_LIB\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\znzlib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\BUILD\niftilib\Debug;E:\BROCCOLI\code\Bash_Wrapper\nifticlib-2.0.0\zlib\BUILD\Release;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -76,6 +78,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>znz.lib;zlib.lib;niftiio.lib;BROCCOLI_LIB.lib;OpenCL.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

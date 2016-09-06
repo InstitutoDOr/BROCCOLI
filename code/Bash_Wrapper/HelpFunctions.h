@@ -2,6 +2,7 @@
 #include <time.h>
 #include "nifti1_io.h"
 #include "broccoli_lib.h"
+#include <string.h>
 
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename);
 
@@ -28,6 +29,8 @@ void AllocateMemoryFloat2(cl_float2 *& pointer, int size, void** pointers, int& 
 float mymax(float* data, int N);
 
 float mymin(float* data, int N);
+
+std::string createSubDirectoryName(std::string fname, std::string subdir);
 
 bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool addFilename, bool checkFilename);
 

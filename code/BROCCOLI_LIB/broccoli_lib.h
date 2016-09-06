@@ -449,7 +449,10 @@ class BROCCOLI_LIB
 		void PerformGLMFTestSecondLevelWrapper();
 		void PerformGLMTTestFirstLevelPermutationWrapper();
 		void PerformGLMFTestFirstLevelPermutationWrapper();
-        void PerformSearchlightWrapper();
+        void PerformSearchlightWrapperNN();
+        void PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH);
+        void PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH);
+        void ReleaseMemorySearchlightWrapperSVM();
 		void PerformMeanSecondLevelPermutationWrapper();
 		void PerformGLMTTestSecondLevelPermutationWrapper();
 		void PerformGLMFTestSecondLevelPermutationWrapper();
@@ -1503,6 +1506,7 @@ class BROCCOLI_LIB
 		cl_mem		c_Censored_Timepoints, c_Censored_Volumes;
 		cl_mem		d_P_Values, d_P_Values_T1, d_P_Values_MNI;
 		cl_mem		c_Permutation_Distribution;
+		cl_mem      d_mask_index1D, d_deltas, d_x_space, d_trainIndex, d_testIndex, d_alpha, d_kmatrix; // Searchlight SVM
 
 		// Paraneters for single subject permutations
 		cl_mem		d_AR1_Estimates, d_AR2_Estimates, d_AR3_Estimates, d_AR4_Estimates;

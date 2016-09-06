@@ -4,7 +4,14 @@
 
 #define NOMINMAX
 
-//#include <windows.h>
+//#include <sys/time.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+    #include <direct.h>
+#elif
+    #include <sys/stat.h>
+#endif
 
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename)
 {
@@ -316,8 +323,45 @@ float mymin(float* data, int N)
 		if (data[i] < min)
 			min = data[i];
 	}
-
 	return min;
+}
+
+bool createDirectoryIfNotExist(const char* fullfilename)
+{
+	struct stat info{};
+
+	
+
+    std::string str(fullfilename);
+    int found=str.find_last_of("/\\");
+    std::string pathname = str.substr(0,found);
+
+	stat(pathname.c_str(), &info);
+    if( !(info.st_mode & S_IFDIR) )  // S_ISDIR() doesn't exist on my windows 
+    {
+        printf( "\ncreating %s \n", pathname.c_str() );
+    
+        #ifdef _WIN32
+            _mkdir(pathname.c_str());
+        #else
+            mkdir(pathname.c_str(), 0777); // notice that 777 is different than 0777
+        #endif
+    }
+	return true;
+}
+
+std::string createSubDirectoryName(std::string fname, std::string subdir)
+{
+	int found = fname.find_last_of("/\\");
+	std::string pathname = fname.substr(0, found);
+	std::string filename = fname.substr(found + 1);
+    
+    std::string sep = "/";
+    #ifdef _WIN32
+        sep = "\\";
+    #endif
+    std::string ret = pathname.append(sep).append(subdir).append(sep).append(filename);
+    return ret;
 }
 
 bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool addFilename, bool checkFilename)
@@ -382,6 +426,7 @@ bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool
     bool written = false;
     if (addFilename)
     {
+        createDirectoryIfNotExist(filenameWithExtension);
         if ( nifti_set_filenames(outputNifti, filenameWithExtension, checkFilename, 1) == 0)
         {
             nifti_image_write(outputNifti);
@@ -390,6 +435,7 @@ bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool
     }
     else if (!addFilename)
     {
+        createDirectoryIfNotExist(filename);
         if ( nifti_set_filenames(outputNifti, filename, checkFilename, 1) == 0)
         {
             nifti_image_write(outputNifti);

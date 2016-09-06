@@ -25,7 +25,7 @@
 #include <sstream>
 #include <iomanip>
 #include <math.h>
-#include <string>
+#include <string.h>
 
 #include "HelpFunctions.h"
 
@@ -110,6 +110,8 @@ int main(int argc, char **argv)
 	bool DO_ALL_PERMUTATIONS = false;
 	int	 NUMBER_OF_STATISTICAL_MAPS = 1;
 
+    int  NUM_VOXELS_BATCH = 2000;
+    int  CLASSIFIER = 1;
 	const char*		outputFilename;
 
     // Size parameters
@@ -132,7 +134,7 @@ int main(int argc, char **argv)
         printf(" -classes                   Classes for training and testing of the classifier \n");
         printf(" -mask                      A mask that defines which voxels to analyze (default none) \n");
         //printf(" -radius                  Radius of search light (default 1 = 7 voxels) \n");
-        //printf(" -classifier              Classifier to use, 0 = neural network, 1 = SVM (default 1) \n");
+        printf(" -classifier                Classifier to use, 0 = neural network, 1 = SVM (default 1) \n");
         //printf(" -inferencemode             Inference mode to use, 0 = voxel, 1 = cluster extent, 2 = cluster mass, 3 = TFCE (default 1) \n");
         //printf(" -cdt                       Cluster defining threshold for cluster inference (default 2.5) \n");
         //printf(" -significance              The significance level to calculate the threshold for (default 0.05) \n");
@@ -140,6 +142,7 @@ int main(int argc, char **argv)
 		//printf(" -writepermutationvalues    Write all the permutation values to a text file \n");
 		//printf(" -writepermutations         Write all the random permutations (or sign flips) to a text file \n");
 		//printf(" -permutationfile           Use a specific permutation file or sign flipping file (e.g. from FSL) \n");
+        printf(" -permutations              Number of permutations (default 5000) \n");
         printf(" -quiet                     Don't print anything to the terminal (default false) \n");
         printf(" -verbose                   Print extra stuff (default false) \n");
         printf("\n\n");
@@ -322,6 +325,28 @@ int main(int argc, char **argv)
 
 			MASK = true;
             MASK_NAME = argv[i+1];
+            i += 2;
+        }
+        else if (strcmp(input,"-classifier") == 0)
+        {
+            if ( (i+1) >= argc  )
+			{
+			    printf("Unable to read value after -classifier !\n");
+                return EXIT_FAILURE;
+			}
+
+            CLASSIFIER = (int)strtol(argv[i+1], &p, 10);
+
+			if (!isspace(*p) && *p != 0)
+		    {
+		        printf("Classifier must be an integer! You provided %s \n",argv[i+1]);
+				return EXIT_FAILURE;
+		    }
+            else if ( (CLASSIFIER != 0) && (CLASSIFIER != 1)  )
+            {
+                printf("Classifier must be 0 or 1 !\n");
+                return EXIT_FAILURE;
+            }
             i += 2;
         }
         else if (strcmp(input,"-debug") == 0)
@@ -880,6 +905,8 @@ int main(int argc, char **argv)
 		allNiftiImages[numberOfNiftiImages] = outputNifti;
 		numberOfNiftiImages++;
 
+        if (CLASSIFIER == 1)
+            BROCCOLI.PrepareSearchlightWrapperSVM(NUM_VOXELS_BATCH);
 
 		for (int k=0; k <= NUMBER_OF_PERMUTATIONS; ++k)
 		{
@@ -900,7 +927,14 @@ int main(int argc, char **argv)
 			}
 
 			startTime = GetWallTime();
-			BROCCOLI.PerformSearchlightWrapper();
+			if (CLASSIFIER == 1)
+			{
+				BROCCOLI.PerformSearchlightWrapperSVM(NUM_VOXELS_BATCH);
+			} 
+			else
+			{
+				BROCCOLI.PerformSearchlightWrapperNN();
+			}
 			endTime = GetWallTime();
 
 			if (VERBOS)
@@ -951,34 +985,46 @@ int main(int argc, char **argv)
 			}
 			else
 			{
-				char buffer[256]; sprintf(buffer, "%05d", k);
+				char buffer[256]; sprintf(buffer, "_acc_%05d.nii", k);
 				std::string str(buffer);
 
 				if (!CHANGE_OUTPUT_NAME)
 				{
 					std::string buf(inputData->fname);
-					buf.append(str);
+					std::stringstream tmp;
+					tmp << buf.substr(0, buf.size() - 4) << str;
+                    buf = createSubDirectoryName(tmp.str(), "PERM");
+                    printf("%s", buf.c_str());
 					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
 				}
 				else
 				{
 					std::string buf(outputFilename);
-					buf.append(str);
+					std::stringstream tmp;
+					tmp << buf.substr(0, buf.size() - 4) << str;
+                    buf = createSubDirectoryName(tmp.str(), "PERM");
+                    printf("%s", buf.c_str());
 					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
 				}
 			}
 
 			startTime = GetWallTime();
 
-			WriteNifti(outputNifti,h_Classifier_Performance,"_classifier_performance",ADD_FILENAME,DONT_CHECK_EXISTING_FILE);
-
+			if (k==0)
+				WriteNifti(outputNifti,h_Classifier_Performance,"_acc",ADD_FILENAME,DONT_CHECK_EXISTING_FILE);
+			else
+				WriteNifti(outputNifti, h_Classifier_Performance, "", ADD_FILENAME, DONT_CHECK_EXISTING_FILE);
+			
 			endTime = GetWallTime();
 
 			if (VERBOS)
 			{
 				printf("It took %f seconds to write the nifti file(s)\n",(float)(endTime - startTime));
 			}
-		}
+		} // Permutations
+        
+		if (CLASSIFIER == 1)
+        	BROCCOLI.ReleaseMemorySearchlightWrapperSVM();
 
 		// Free all memory
 		FreeAllMemory(allMemoryPointers,numberOfMemoryPointers);
