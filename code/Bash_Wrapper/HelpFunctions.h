@@ -4,6 +4,18 @@
 #include "broccoli_lib.h"
 #include <string.h>
 
+#define NOMINMAX
+
+//#include <sys/time.h>
+#include <sys/stat.h>
+
+#ifdef _WIN32
+#include <direct.h>
+#include <sys/timeb.h>
+#elif
+#include <sys/stat.h>
+#endif
+
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename);
 
 void LowpassFilterRegressor(float* h_LowpassFiltered_Regressor, float* h_Regressor, int DATA_T, int HIGHRES_FACTOR, float TR);

@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C1F218C7-9918-4EB0-BC55-4526A892BC04}</ProjectGuid>
+    <ProjectGuid>{D792B3AC-1F11-4E9F-B43C-11ADAC16BC46}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Searchlight</RootNamespace>
+    <RootNamespace>GetOpenCLInfo</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -43,13 +43,11 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\$(Configuration);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\$(Configuration);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(SystemRoot)\SysWow64;$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH)</ExecutablePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\$(Configuration);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\$(Configuration);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(SystemRoot)\SysWow64;$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH)</ExecutablePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -74,7 +72,6 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -85,11 +82,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\HelpFunctions.cpp" />
-    <ClCompile Include="..\..\Searchlight.cpp" />
+    <ClCompile Include="..\..\GetOpenCLInfo.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

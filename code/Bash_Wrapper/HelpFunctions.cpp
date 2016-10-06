@@ -1,17 +1,4 @@
-
-#include <time.h>
 #include "HelpFunctions.h"
-
-#define NOMINMAX
-
-//#include <sys/time.h>
-#include <sys/stat.h>
-
-#ifdef _WIN32
-    #include <direct.h>
-#elif
-    #include <sys/stat.h>
-#endif
 
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename)
 {
@@ -334,19 +321,22 @@ bool createDirectoryIfNotExist(const char* fullfilename)
 
     std::string str(fullfilename);
     int found=str.find_last_of("/\\");
-    std::string pathname = str.substr(0,found);
+	if (found != -1)
+	{
+		std::string pathname = str.substr(0, found);
 
-	stat(pathname.c_str(), &info);
-    if( !(info.st_mode & S_IFDIR) )  // S_ISDIR() doesn't exist on my windows 
-    {
-        printf( "\ncreating %s \n", pathname.c_str() );
-    
-        #ifdef _WIN32
-            _mkdir(pathname.c_str());
-        #else
-            mkdir(pathname.c_str(), 0777); // notice that 777 is different than 0777
-        #endif
-    }
+		stat(pathname.c_str(), &info);
+		if (!(info.st_mode & S_IFDIR))  // S_ISDIR() doesn't exist on my windows 
+		{
+			printf("\ncreating %s \n", pathname.c_str());
+
+#ifdef _WIN32
+			_mkdir(pathname.c_str());
+#else
+			mkdir(pathname.c_str(), 0777); // notice that 777 is different than 0777
+#endif
+		}
+	}
 	return true;
 }
 
@@ -460,19 +450,29 @@ bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool
         return false;
     }                        
 }
+#ifdef WINDOWS
+int getMilliCount()
+{
+	timeb tb;
+	ftime(&tb);
+	int nCount = tb.millitm + (tb.time & 0xfffff) * 1000;
+	return nCount;
+}
+
+int getMilliSpan(int nTimeStart)
+{
+	int nSpan = getMilliCount() - nTimeStart;
+	if (nSpan < 0)
+		nSpan += 0x100000 * 1000;
+	return nSpan;
+}
+#endif
 
 double GetWallTime()
 {
 
-	return 0;
-
-}
-
-/*double GetWallTime()
-{
-
-#ifdef _WIN32
-	return (double)GetTickCount() * 1000;
+#ifdef WINDOWS
+	return (double)getMilliCount()/1000.0;
 #else
 	struct timeval time;
 	if (gettimeofday(&time, NULL))
@@ -483,4 +483,3 @@ double GetWallTime()
 	return (double)time.tv_sec + (double)time.tv_usec * .000001;
 #endif
 }
-*/

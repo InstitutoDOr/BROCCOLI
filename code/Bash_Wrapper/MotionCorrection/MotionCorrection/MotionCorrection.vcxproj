@@ -11,9 +11,9 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C1F218C7-9918-4EB0-BC55-4526A892BC04}</ProjectGuid>
+    <ProjectGuid>{2FE1EFD5-B5D9-4139-B554-192F58CB0A14}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>Searchlight</RootNamespace>
+    <RootNamespace>MotionCorrection</RootNamespace>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -43,13 +43,11 @@
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\$(Configuration);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\$(Configuration);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(SystemRoot)\SysWow64;$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH)</ExecutablePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <IncludePath>$(IncludePath);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\include;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(CUDA_PATH)\include\;$(CUDA_PATH)\include\CL</IncludePath>
     <LibraryPath>$(CUDA_PATH)\lib\Win32;$(BROCCOLI_DIR)code\BROCCOLI_LIB\$(Configuration);$(BROCCOLI_DIR)code\Bash_Wrapper\nifticlib-2.0.0\lib\$(Configuration);$(LibraryPath)</LibraryPath>
-    <ExecutablePath>$(VC_ExecutablePath_x86);$(WindowsSDK_ExecutablePath);$(VS_ExecutablePath);$(SystemRoot)\SysWow64;$(MSBuild_ExecutablePath);$(FxCopDir);$(PATH)</ExecutablePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -57,12 +55,12 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WINDOWS;WIN32;_DEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>znz.lib;zlib.lib;niftiio.lib;BROCCOLI_LIB.lib;OpenCL.lib</AdditionalDependencies>
+      <AdditionalDependencies>znz.lib;zlib.lib;niftiio.lib;BROCCOLI_LIB.lib;OpenCL.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -73,23 +71,18 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <PreprocessorDefinitions>WINDOWS;WIN32;NDEBUG;_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>znz.lib;zlib.lib;niftiio.lib;BROCCOLI_LIB.lib;OpenCL.lib</AdditionalDependencies>
+      <AdditionalDependencies>znz.lib;zlib.lib;niftiio.lib;BROCCOLI_LIB.lib;OpenCL.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\HelpFunctions.cpp" />
-    <ClCompile Include="..\..\Searchlight.cpp" />
+    <ClCompile Include="..\..\MotionCorrection.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
