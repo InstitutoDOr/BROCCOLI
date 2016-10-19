@@ -72,7 +72,7 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\BROCCOLI\code\BROCCOLI_LIB\clBLASMac;\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB;$(IncludePath);E:\ProgramFiles\NVIDIA\Toolkit\include\CL</IncludePath>
+    <IncludePath>$(BROCCOLI_DIR)code\BROCCOLI_LIB\clBLASMac;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(IncludePath);$(CudaToolkitIncludeDir)\CL</IncludePath>
     <SourcePath>$(VC_SourcePath);</SourcePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -81,7 +81,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>E:\BROCCOLI\code\BROCCOLI_LIB\clBLASMac;\\10.36.4.201\dados3\SOFTWARES\PESQUISA\BROCCOLI\code\BROCCOLI_LIB;$(IncludePath);E:\ProgramFiles\NVIDIA\Toolkit\include\CL</IncludePath>
+    <IncludePath>$(BROCCOLI_DIR)code\BROCCOLI_LIB\clBLASMac;$(BROCCOLI_DIR)code\BROCCOLI_LIB;$(IncludePath);$CudaToolkitIncludeDir)\CL</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>true</LinkIncremental>

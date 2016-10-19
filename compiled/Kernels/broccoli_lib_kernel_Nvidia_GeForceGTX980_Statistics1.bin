@@ -4417,7 +4417,7 @@ BB13_33:
 	.param .u32 .ptr .global .align 4 TransformData_param_0,
 	.param .u32 .ptr .global .align 4 TransformData_param_1,
 	.param .u32 .ptr .global .align 4 TransformData_param_2,
-	.param .u32 .ptr .const .align 4 TransformData_param_3,
+	.param .u32 .ptr .global .align 4 TransformData_param_3,
 	.param .u32 TransformData_param_4,
 	.param .u32 TransformData_param_5,
 	.param .u32 TransformData_param_6,
@@ -4501,7 +4501,7 @@ BB14_5:
 	mov.u32 	%r16, %r74;
 	mov.u32 	%r18, %r70;
 	ld.global.f32 	%f5, [%r16];
-	ld.const.f32 	%f6, [%r68];
+	ld.global.f32 	%f6, [%r68];
 	fma.rn.f32 	%f8, %f6, %f5, %f8;
 	st.global.f32 	[%r15], %f8;
 	add.s32 	%r68, %r68, 4;

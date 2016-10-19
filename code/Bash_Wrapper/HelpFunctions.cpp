@@ -2,6 +2,8 @@
 #include <time.h>
 #include "HelpFunctions.h"
 
+
+
 #define NOMINMAX
 
 //#include <sys/time.h>
@@ -12,6 +14,31 @@
 #elif
     #include <sys/stat.h>
 #endif
+
+void CheckFileExtension(const char* filename, bool& extensionOK, std::string& extension)
+{
+    const char* p = filename;
+    int dotPosition = 0;
+    while ( (p != NULL) && ((*p) != '.') )
+    {
+        p++;
+    }
+	extension = "";
+	extension.append(p);
+        
+	// Compare extension to OK values
+	std::string extension1 = ".nii";
+	std::string extension2 = ".nii.gz";
+
+	if ( (extension.compare(extension1) != 0) && (extension.compare(extension2) != 0) )
+	{
+		extensionOK = false;
+	}
+	else
+	{
+		extensionOK = true;			
+	}
+}
 
 void CreateFilename(char *& filenameWithExtension, nifti_image* inputNifti, const char* extension, bool CHANGE_OUTPUT_FILENAME, const char* outputFilename)
 {
@@ -242,7 +269,6 @@ void AllocateMemory(float *& pointer, size_t size, void** pointers, int& Npointe
 		exit(EXIT_FAILURE);        
     }
 }
-
 
 void AllocateMemoryInt(unsigned short int *& pointer, size_t size, void** pointers, int& Npointers, nifti_image** niftiImages, int Nimages, size_t allocatedMemory, const char* variable)
 {
