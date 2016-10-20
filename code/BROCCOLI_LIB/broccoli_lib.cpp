@@ -13516,9 +13516,6 @@ void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 8, sizeof(int),     &NUMBER_OF_SUBJECTS);
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 9, sizeof(float),   &n);
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 10, sizeof(int),    &EPOCS);
-
-
-		
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 11, sizeof(cl_mem),  	&d_x_space); // x_space
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 12, sizeof(cl_mem), 	&d_trainIndex); // trainIndex
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 13, sizeof(cl_mem),  	&d_testIndex); // testIndex
