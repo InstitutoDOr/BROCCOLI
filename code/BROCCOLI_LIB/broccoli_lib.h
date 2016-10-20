@@ -450,8 +450,8 @@ class BROCCOLI_LIB
 		void PerformGLMTTestFirstLevelPermutationWrapper();
 		void PerformGLMFTestFirstLevelPermutationWrapper();
         void PerformSearchlightWrapperNN();
-        void PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH);
-        void PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH);
+        void PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEOUT);
+		void PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEOUT);
         void ReleaseMemorySearchlightWrapperSVM();
 		void PerformMeanSecondLevelPermutationWrapper();
 		void PerformGLMTTestSecondLevelPermutationWrapper();

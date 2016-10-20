@@ -103,33 +103,45 @@ void normalize_x(__global float *x_space, int N, int d)
 
 
 float doFold(__global float *dense_points, __global int *trainIndex, __global int *testIndex, int d, __global float *alpha, 
-		 __constant float *c_Correct_Classes, int trainN, int numExemplos, __global const float* kmatrix, int fold)
+		 __constant float *c_Correct_Classes, int trainN, int numExemplos, __global const float* kmatrix, int fold, int NperFold)
 {
-	int n_correct = 0;
-	
-	//printf("begin doFold\n");
-	
 	int idx = 0;
-	for (int k=0; k<numExemplos; k++)
+	int idxTest = 0;
+	for (int k = 0; k<numExemplos; k++)
 	{
-		if(k!=fold)
+		if(k<fold || k>=fold+NperFold)
 		{
 			trainIndex[idx] = k;
 			++idx;
 		}
 		else
 		{
-			testIndex[0] = k;
+			testIndex[idxTest] = k;
+			++idxTest;
 		}
 	}
 
+	// train once per fold
 	float bias = 0;
 	train_svm(trainN, d, dense_points, c_Correct_Classes, alpha, &bias, trainIndex, kmatrix, numExemplos);
 	
-	float pred = 0, margin = 0;
-	predict_svm(trainN, d, fold, dense_points, alpha, c_Correct_Classes, bias, &pred, &margin, trainIndex, kmatrix, numExemplos);
-	
-	return margin;
+	// predict all test samples
+	int n_correct = 0;
+	for (int tk = 0; tk < NperFold; ++tk)
+	{
+		int testidx = testIndex[tk];
+		float pred = 0, margin = 0;
+		predict_svm(trainN, d, testidx, dense_points, alpha, c_Correct_Classes, bias, &pred, &margin, trainIndex, kmatrix, numExemplos);
+
+		if (margin > 0 == c_Correct_Classes[testidx] > 0)
+		{
+			n_correct++;
+		}
+	}
+
+	float accuracy = (float)n_correct / (float)(numExemplos);
+
+	return accuracy;
 }
 
 /*

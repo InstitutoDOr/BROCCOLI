@@ -669,11 +669,8 @@ __kernel void CalculateStatisticalMapSearchlight_19(__global float* Classifier_P
 
 void normalize_x(__global float *x_space, int N, int d);
 
-float doLeaveOneOut(__global float *dense_points, __global int *trainIndex, __global int *testIndex, int d, __global float *alph,
-		 __constant float *c_Correct_Classes, int trainN, int numExemplos);
-
 float doFold(__global float *dense_points, __global int *trainIndex, __global int *testIndex, int d, __global float *alpha,
-		 __constant float *c_Correct_Classes, int trainN, int numExemplos, __global const float* kmatrix, int fold);
+	__constant float *c_Correct_Classes, int trainN, int numExemplos, __global const float* kmatrix, int fold, int NperFold);
 
 __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 										__global const int *voxelIndex1D, 	// 1
@@ -842,8 +839,9 @@ __kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Per
                                                   __global const float *kmatrix, 			// 18
                                                   __private int NFEAT, 						// 19
                                                   __private int fold,						// 20
-												  __private int voxbatchoffset, 			// 21
-									              __private int voxbatchsize)				// 22
+												  __private int NperFold,					// 21
+												  __private int voxbatchoffset, 			// 22
+									              __private int voxbatchsize)				// 23
 {
     int voxind = get_global_id(0);
 
@@ -869,52 +867,15 @@ __kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Per
         return;
     }
 
-	int trainN = NUMBER_OF_VOLUMES-1;
-
+	int trainN = NUMBER_OF_VOLUMES - NperFold;
+	
     //printf("calling leaveoneout\n");
-    int trainOffset = voxindWithOffset*(NUMBER_OF_VOLUMES-1);
+	int trainOffset = voxindWithOffset*(NUMBER_OF_VOLUMES - NperFold);
+	int testOffset  = voxindWithOffset*NperFold;
 
-    float margin = doFold( x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex+trainOffset, testIndex+voxindWithOffset, NFEAT, alph+trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix+voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold);
-
-    //float margin = 0;
- /*   if (testvoxIndex == volumeId)
-    		printf("margin=%f verdadeiro=%f\n", margin, c_d[fold]);
-*/
-    int n_correct = 0;
-    if (margin > 0 == c_d[fold] > 0)
-	{
-		n_correct++;
-	}
-
-    float accuracy = (float)n_correct / (float)(NUMBER_OF_VOLUMES);
-
-
-	/*if (testvoxIndex == volumeId)
-		printf("x_space within svm searchlight\n");
-
-
-	x_space = x_space + voxind*NFEAT*NUMBER_OF_VOLUMES;
-	for (int t = 0; t < NUMBER_OF_VOLUMES; t++)
-	{
-	   for (int k=0; k<NFEAT; k++)
-	   {
-		   if (testvoxIndex == volumeId)
-			   printf("%f ", x_space[t*NFEAT + k]);
-	   }
-	   if (testvoxIndex == volumeId)
-			printf("\n");
-	}*/
-
-
-/*
-	if (testvoxIndex == volumeId)
-	{
-    	printf("voxind: %d volumeId: %d acc before: %f acc: %f\n",voxind, volumeId,Classifier_Performance[volumeId],accuracy);
-    	//for(int k=0; k<NUMBER_OF_VOLUMES; ++k)
-    		//printf("y[%d]=%f ", k, c_d[k]);
-	}
-*/
-    Classifier_Performance[volumeId] = Classifier_Performance[volumeId] + accuracy; //(float)classification_performance / (float)uncensoredVolumes;
+	float accuracy = doFold(x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex + trainOffset, testIndex + testOffset, NFEAT, alph + trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix + voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold, NperFold);
+	
+    Classifier_Performance[volumeId] = Classifier_Performance[volumeId] + accuracy;
 }
 
 // sphere radius of 2 voxels resulting in 33 voxels

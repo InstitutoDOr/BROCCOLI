@@ -94,6 +94,7 @@ int main(int argc, char **argv)
                    
     float           CLUSTER_DEFINING_THRESHOLD = 2.5f;
 	size_t			NUMBER_OF_PERMUTATIONS = 5000;
+	int				LEAVEOUT;
 	float			SIGNIFICANCE_LEVEL = 0.05f;
 	int				INFERENCE_MODE = 1;
 	bool			MASK = false;
@@ -143,7 +144,8 @@ int main(int argc, char **argv)
 		//printf(" -writepermutations         Write all the random permutations (or sign flips) to a text file \n");
 		//printf(" -permutationfile           Use a specific permutation file or sign flipping file (e.g. from FSL) \n");
         printf(" -permutations              Number of permutations (default 5000) \n");
-        printf(" -quiet                     Don't print anything to the terminal (default false) \n");
+		printf(" -leaveout                  Number of examples to leaveout for prediction. Leaveout samples will be contiguous. Therefore one can test paired predictions using '-leaveout 2') . Number folds = number(input files)/leaveout. (default 1) \n");
+		printf(" -quiet                     Don't print anything to the terminal (default false) \n");
         printf(" -verbose                   Print extra stuff (default false) \n");
         printf("\n\n");
         
@@ -239,14 +241,36 @@ int main(int argc, char **argv)
 		        printf("Number of permutations must be an integer! You provided %s \n",argv[i+1]);
 				return EXIT_FAILURE;
 		    }
-            else if (NUMBER_OF_PERMUTATIONS <= 0)
+            else if (NUMBER_OF_PERMUTATIONS < 0)
             {
-                printf("Number of permutations must be > 0!\n");
+                printf("Number of permutations must be >= 0!\n");
                 return EXIT_FAILURE;
             }
             i += 2;
         }
-        else if (strcmp(input,"-inferencemode") == 0)
+		else if (strcmp(input, "-leaveout") == 0)
+		{
+			if ((i + 1) >= argc)
+			{
+				printf("Unable to read value after -leaveout !\n");
+				return EXIT_FAILURE;
+			}
+
+			LEAVEOUT = (int)strtol(argv[i + 1], &p, 10);
+
+			if (!isspace(*p) && *p != 0)
+			{
+				printf("Leaveout must be an integer! You provided %s \n", argv[i + 1]);
+				return EXIT_FAILURE;
+			}
+			else if (LEAVEOUT <= 0)
+			{
+				printf("Leaveout must be > 0!\n");
+				return EXIT_FAILURE;
+			}
+			i += 2;
+		}
+		else if (strcmp(input, "-inferencemode") == 0)
         {
 			if ( (i+1) >= argc  )
 			{
@@ -906,7 +930,7 @@ int main(int argc, char **argv)
 		numberOfNiftiImages++;
 
         if (CLASSIFIER == 1)
-            BROCCOLI.PrepareSearchlightWrapperSVM(NUM_VOXELS_BATCH);
+			BROCCOLI.PrepareSearchlightWrapperSVM(NUM_VOXELS_BATCH, LEAVEOUT);
 
 		for (int k=0; k <= NUMBER_OF_PERMUTATIONS; ++k)
 		{
@@ -929,7 +953,7 @@ int main(int argc, char **argv)
 			startTime = GetWallTime();
 			if (CLASSIFIER == 1)
 			{
-				BROCCOLI.PerformSearchlightWrapperSVM(NUM_VOXELS_BATCH);
+				BROCCOLI.PerformSearchlightWrapperSVM(NUM_VOXELS_BATCH, LEAVEOUT);
 			} 
 			else
 			{

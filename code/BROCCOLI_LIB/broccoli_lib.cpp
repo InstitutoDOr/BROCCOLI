@@ -13217,7 +13217,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapperNN()
 }
 
 
-void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH)
+void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEOUT)
 {
     	// Allocate memory for volumes
     d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
@@ -13429,7 +13429,6 @@ void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH)
     d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
     d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
 
-	int LEAVEOUT = 1;
     // create help buffers
     d_trainIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * (NUMBER_OF_SUBJECTS-LEAVEOUT) * sizeof(int), NULL, NULL);
 	d_testIndex 	= clCreateBuffer(context, CL_MEM_READ_WRITE, VOXELS_MASK * LEAVEOUT* sizeof(int), NULL, NULL);
@@ -13437,14 +13436,13 @@ void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH)
 
 }
 
-void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH)
+void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEOUT)
 {
 
 	int vox_mask = (int)VOXELS_MASK;
 	int SIZ_VOLUME = MNI_DATA_W*MNI_DATA_H*MNI_DATA_D;
 	const int NFEAT = 123;
 	float n = 0.001;
-	int LEAVEOUT = 1;
 	int EPOCS = 50;
 
 	// copy every call due to permutations
@@ -13521,14 +13519,15 @@ void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH)
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 18, sizeof(cl_mem),  	&d_kmatrix); // kernel matrix
 		clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 19, sizeof(int),  		&NFEAT); // number of features
 
-		for (int k=0; k<NUMBER_OF_SUBJECTS; k++)
+		for (int k = 0; k<NUMBER_OF_SUBJECTS; k += LEAVEOUT)
 		{
            clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 20, sizeof(int),  	&k); // fold
-		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &voxoffset);
-		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxbatchsize);
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &LEAVEOUT); // NperFold
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxoffset);
+		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 23, sizeof(int),    &voxbatchsize);
 
 		   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
-		   clFinish(commandQueue);
+		   clFinish(commandQueue);		   
 		}
         if (VERBOS)
             printf("Searchlight finished\n");
@@ -13671,9 +13670,7 @@ void BROCCOLI_LIB::PerformGLMTTestSecondLevelPermutationWrapper()
 	c_Contrasts = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_TOTAL_GLM_REGRESSORS * NUMBER_OF_CONTRASTS * sizeof(float), NULL, NULL);
 	c_ctxtxc_GLM = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_CONTRASTS * sizeof(float), NULL, NULL);
 	c_Permutation_Vector = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * sizeof(unsigned short int), NULL, NULL);
-
-	// Not using constant memory for transformation matrix, as it will be too small for > 130 subjects
-	c_Transformation_Matrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+	c_Transformation_Matrix = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
 
 	// Allocate memory for results
 	d_Beta_Volumes = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_TOTAL_GLM_REGRESSORS * sizeof(float), NULL, NULL);
@@ -13749,9 +13746,7 @@ void BROCCOLI_LIB::PerformGLMFTestSecondLevelPermutationWrapper()
 	c_Contrasts = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_TOTAL_GLM_REGRESSORS * NUMBER_OF_CONTRASTS * sizeof(float), NULL, NULL);
 	c_ctxtxc_GLM = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_CONTRASTS * NUMBER_OF_CONTRASTS * sizeof(float), NULL, NULL);
 	c_Permutation_Vector = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * sizeof(unsigned short int), NULL, NULL);
-
-	// Not using constant memory for transformation matrix, as it will be too small for > 130 subjects
-	c_Transformation_Matrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+	c_Transformation_Matrix = clCreateBuffer(context, CL_MEM_READ_ONLY, NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
 
 	// Allocate memory for results
 	d_Beta_Volumes = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_TOTAL_GLM_REGRESSORS * sizeof(float), NULL, NULL);
