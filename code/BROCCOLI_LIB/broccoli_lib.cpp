@@ -621,6 +621,9 @@ void BROCCOLI_LIB::SetStartValues()
     runKernelErrorCalculateStatisticalMapsGLMFTestSecondLevelPermutation = 0;
     runKernelErrorCalculateStatisticalMapsMeanSecondLevelPermutation = 0;
     runKernelErrorCalculateStatisticalMapSearchlight = 0;
+	runKernelErrorPrepareInputSearchlight = 0;
+	runKernelErrorPrepareSearchlight = 0;
+
     runKernelErrorTransformData = 0;
     runKernelErrorRemoveLinearFit = 0;
     runKernelErrorRemoveLinearFitSlice = 0;
@@ -1379,7 +1382,11 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 	if (WRAPPER == BASH)
 	{
 		binaryPathAndFilename.append(GetBROCCOLIDirectory());
+#ifdef WINDOWS
+		binaryPathAndFilename.append("compiled\\Kernels\\");
+#else
 		binaryPathAndFilename.append("compiled/Kernels/");
+#endif
 	}
 	binaryPathAndFilename.append(binaryFilename);
 
@@ -1419,7 +1426,11 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 	if (WRAPPER == BASH)
 	{	
 		OpenCLPath.append(GetBROCCOLIDirectory());
+#ifdef WINDOWS
+		OpenCLPath.append("code\\Kernels\\");
+#else
 		OpenCLPath.append("code/Kernels/");
+#endif
 	}
 
 	std::vector<std::string> kernelPathAndFileNames;
@@ -1460,22 +1471,21 @@ bool BROCCOLI_LIB::OpenCLInitiate(cl_uint OPENCL_PLATFORM, cl_uint OPENCL_DEVICE
 
 			if (kernelPathAndFileNames[k].find("Searchlight") != std::string::npos)
 			{
-
-								printf("building searchlight %s\n", kernelPathAndFileNames[k].c_str());
-							    // Read svm code from file
-								std::string temp = OpenCLPath;
-								temp.append("solveSVM.cl");
-								std::fstream svmFile(temp,std::ios::in);
-								std::ostringstream oss2;
-								oss2 << svmFile.rdbuf();
-								src2 = oss2.str();
-								srcstr[1] = src2.c_str();
-								nsources = 2;
-								//nsources = 1;
+				//printf("building searchlight %s\n", kernelPathAndFileNames[k].c_str());
+				// Read svm code from file
+				std::string temp = OpenCLPath;
+				temp.append("solveSVM.cl");
+				std::fstream svmFile(temp, std::ios::in);
+				std::ostringstream oss2;
+				oss2 << svmFile.rdbuf();
+				src2 = oss2.str();
+				srcstr[1] = src2.c_str();
+				nsources = 2;
+				//nsources = 1;
 			}
 			else
 			{
-				printf("Kernel not searchligh\n");
+				//printf("Kernel not searchligh\n");
 				srcstr[1] = NULL;
 			}
 

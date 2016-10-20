@@ -40,9 +40,6 @@ int Calculate4DIndex(int x, int y, int z, int t, int DATA_W, int DATA_H, int DAT
 	return x + y * DATA_W + z * DATA_W * DATA_H + t * DATA_W * DATA_H * DATA_D;
 }
 
-
-
-
 void ReadSphere(__local float* Volume,
                 __global const float* Volumes,
                 int x,
@@ -116,8 +113,6 @@ void ReadSphere(__local float* Volume,
         Volume[Calculate3DIndex(tIdx.x + 8,tIdx.y + 8,tIdx.z + 8, 16, 16)] = Volumes[Calculate4DIndex(x + 4,y + 4,z + 4,t,DATA_W, DATA_H, DATA_D)];
     }
 }
-
-
 
 
 __kernel void CalculateStatisticalMapSearchlight_(__global float* Classifier_Performance,
@@ -616,8 +611,8 @@ __kernel void CalculateStatisticalMapSearchlight_19(__global float* Classifier_P
         //if (x==9 && y==22 && z==26)
         if (x1 == 0.0f || x2 == 0.0f || x3 == 0.0f || x4 == 0.0f || x5 == 0.0f || x6 == 0.0f || x7 == 0.0f || x8 == 0.0f || x9 == 0.0f || x10 == 0.0f || x11 == 0.0f || x12 == 0.0f || x13 == 0.0f || x14 == 0.0f || x15 == 0.0f || x16 == 0.0f || x17 == 0.0f || x18 == 0.0f || x19 == 0.0f )
         {
-        	printf("classifying %i\n", validation);
-            printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f\n", x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19);
+        	//printf("classifying %i\n", validation);
+            //printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f\n", x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19);
             printed = true;
         }
 
@@ -695,7 +690,7 @@ __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 	//if (testIndex != volumeId)
 	//	return;
 
-	//printf("%d\n", SIZ_VOLUME);
+	////printf("%d\n", SIZ_VOLUME);
 	// calculate maximum and minimum over time
 	for (int t=1; t<NUMBER_OF_VOLUMES; ++t)
 	{
@@ -722,13 +717,13 @@ __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 		}
 	}
 
-	//printf("voxind=%d volumeId=%d scale=%f minimum_scaled=%f minimum= %f maximum=%f\n", voxind, volumeId, scale, minimum_scaled, minimum, maximum);
+	////printf("voxind=%d volumeId=%d scale=%f minimum_scaled=%f minimum= %f maximum=%f\n", voxind, volumeId, scale, minimum_scaled, minimum, maximum);
 
 	// apply scaling
 	for (int t=0; t<NUMBER_OF_VOLUMES; ++t)
 	{
 		Volumes[volumeId+t*SIZ_VOLUME] = Volumes[volumeId+t*SIZ_VOLUME] * scale - minimum_scaled - 1.;
-		//printf("x[%i][%i]=%f ", k, m, x_space[k*d+m] );
+		////printf("x[%i][%i]=%f ", k, m, x_space[k*d+m] );
 	}
 }
 
@@ -779,7 +774,7 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 	// populate x
 	int voxoffset = voxind*NFEAT*NUMBER_OF_VOLUMES;
 	//if (testIndex == volumeId)
-	//    	printf("voxind: %d x_space:\n",voxind);
+	//    	//printf("voxind: %d x_space:\n",voxind);
 
 	for (int t = 0; t < NUMBER_OF_VOLUMES; t++)
     {
@@ -788,10 +783,10 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 		   x_space[t*NFEAT + k + voxoffset] = Volumes[volumeId+deltaIndex[k]+t*SIZ_VOLUME]; // + c_d[t]
 
 		   //if (testIndex == volumeId)
-			//   printf("%f ", x_space[t*NFEAT + k + voxoffset]);
+			//   //printf("%f ", x_space[t*NFEAT + k + voxoffset]);
 	   }
 	  // if (testIndex == volumeId)
-	   	//    printf("\n");
+	   	//    //printf("\n");
     }
 
     // add sphere offset based on voxel index
@@ -800,7 +795,7 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 
     // compute kernel matrix
     //if (testIndex == volumeId)
-    //	printf("voxind: %d kernelmatrix:\n",voxind);
+    //	//printf("voxind: %d kernelmatrix:\n",voxind);
 
 	for (int a=0; a<NUMBER_OF_VOLUMES; ++a)
 	{
@@ -809,11 +804,11 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 			kmatrix[a+b*NUMBER_OF_VOLUMES] = dotproduct(x_space + a*NFEAT, x_space + b*NFEAT, NFEAT);
 
 			//if (testIndex == volumeId)
-			 //   printf("%f ",kmatrix[a+b*NUMBER_OF_VOLUMES]);
+			 //   //printf("%f ",kmatrix[a+b*NUMBER_OF_VOLUMES]);
 
 		}
 		//if (testIndex == volumeId)
-		//	printf("\n");
+		//	//printf("\n");
 	}
 
 }
@@ -869,7 +864,7 @@ __kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Per
 
 	int trainN = NUMBER_OF_VOLUMES - NperFold;
 	
-    //printf("calling leaveoneout\n");
+    ////printf("calling leaveoneout\n");
 	int trainOffset = voxindWithOffset*(NUMBER_OF_VOLUMES - NperFold);
 	int testOffset  = voxindWithOffset*NperFold;
 
@@ -1217,8 +1212,8 @@ __kernel void CalculateStatisticalMapSearchlight_33(__global float* Classifier_P
         
         if (x==9 && y==22 && z==26)
                 {
-                    printf("classifying %i\n", validation);
-                    printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f 20:%f 21:%f 22:%f 23:%f 24:%f 25:%f 26:%f 27:%f 28:%f 29:%f 30:%f 31:%f 32:%f 33:%f \n " ,xs[1], xs[2], xs[3], xs[4], xs[5], xs[6], xs[7], xs[8], xs[9], xs[10], xs[11], xs[12], xs[13], xs[14], xs[15], xs[16], xs[17], xs[18], xs[19], xs[20], xs[21], xs[22], xs[23], xs[24], xs[25], xs[26], xs[27], xs[28], xs[29], xs[30], xs[31], xs[32], xs[33]);
+                    //printf("classifying %i\n", validation);
+                    //printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f 20:%f 21:%f 22:%f 23:%f 24:%f 25:%f 26:%f 27:%f 28:%f 29:%f 30:%f 31:%f 32:%f 33:%f \n " ,xs[1], xs[2], xs[3], xs[4], xs[5], xs[6], xs[7], xs[8], xs[9], xs[10], xs[11], xs[12], xs[13], xs[14], xs[15], xs[16], xs[17], xs[18], xs[19], xs[20], xs[21], xs[22], xs[23], xs[24], xs[25], xs[26], xs[27], xs[28], xs[29], xs[30], xs[31], xs[32], xs[33]);
                 }
 
         // weights sum
@@ -2260,13 +2255,13 @@ __kernel void CalculateStatisticalMapSearchlight_123(__global float* Classifier_
         if (x==9 && y==22 && z==26)
         //if (!printed)
         {
-            printf("classifying %i\n", validation);
+            //printf("classifying %i\n", validation);
 
-          	printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f 20:%f 21:%f 22:%f 23:%f 24:%f 25:%f 26:%f 27:%f 28:%f 29:%f 30:%f 31:%f 32:%f ",x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30, x31, x32);
-            printf(" 33:%f 34:%f 35:%f 36:%f 37:%f 38:%f 39:%f 40:%f 41:%f 42:%f 43:%f 44:%f 45:%f 46:%f 47:%f 48:%f 49:%f 50:%f 51:%f 52:%f 53:%f 54:%f 55:%f 56:%f 57:%f 58:%f 59:%f 60:%f 61:%f 62:%f 63:%f 64:%f", x33, x34, x35, x36, x37, x38, x39, x40, x41, x42, x43, x44, x45, x46, x47, x48, x49, x50, x51, x52, x53, x54, x55, x56, x57, x58, x59, x60, x61, x62, x63, x64);
-            printf(" 65:%f 66:%f 67:%f 68:%f 69:%f 70:%f 71:%f 72:%f 73:%f 74:%f 75:%f 76:%f 77:%f 78:%f 79:%f 80:%f 81:%f 82:%f 83:%f 84:%f 85:%f 86:%f 87:%f 88:%f 89:%f 90:%f 91:%f 92:%f 93:%f 94:%f 95:%f 96:%f", x65, x66, x67, x68, x69, x70, x71, x72, x73, x74, x75, x76, x77, x78, x79, x80, x81, x82, x83, x84, x85, x86, x87, x88, x89, x90, x91, x92, x93, x94, x95, x96);
-            printf(" 97:%f 98:%f 99:%f 100:%f 101:%f 102:%f 103:%f 104:%f 105:%f 106:%f 107:%f 108:%f 109:%f 110:%f 111:%f 112:%f 113:%f 114:%f 115:%f 116:%f 117:%f 118:%f 119:%f 120:%f 121:%f 122:%f 123:%f ", x97, x98, x99, x100, x101, x102, x103, x104, x105, x106, x107, x108, x109, x110, x111, x112, x113, x114, x115, x116, x117, x118, x119, x120, x121, x122, x123);
-            printf("\n");
+          	//printf("1:%f 2:%f 3:%f 4:%f 5:%f 6:%f 7:%f 8:%f 9:%f 10:%f 11:%f 12:%f 13:%f 14:%f 15:%f 16:%f 17:%f 18:%f 19:%f 20:%f 21:%f 22:%f 23:%f 24:%f 25:%f 26:%f 27:%f 28:%f 29:%f 30:%f 31:%f 32:%f ",x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15, x16, x17, x18, x19, x20, x21, x22, x23, x24, x25, x26, x27, x28, x29, x30, x31, x32);
+            //printf(" 33:%f 34:%f 35:%f 36:%f 37:%f 38:%f 39:%f 40:%f 41:%f 42:%f 43:%f 44:%f 45:%f 46:%f 47:%f 48:%f 49:%f 50:%f 51:%f 52:%f 53:%f 54:%f 55:%f 56:%f 57:%f 58:%f 59:%f 60:%f 61:%f 62:%f 63:%f 64:%f", x33, x34, x35, x36, x37, x38, x39, x40, x41, x42, x43, x44, x45, x46, x47, x48, x49, x50, x51, x52, x53, x54, x55, x56, x57, x58, x59, x60, x61, x62, x63, x64);
+            //printf(" 65:%f 66:%f 67:%f 68:%f 69:%f 70:%f 71:%f 72:%f 73:%f 74:%f 75:%f 76:%f 77:%f 78:%f 79:%f 80:%f 81:%f 82:%f 83:%f 84:%f 85:%f 86:%f 87:%f 88:%f 89:%f 90:%f 91:%f 92:%f 93:%f 94:%f 95:%f 96:%f", x65, x66, x67, x68, x69, x70, x71, x72, x73, x74, x75, x76, x77, x78, x79, x80, x81, x82, x83, x84, x85, x86, x87, x88, x89, x90, x91, x92, x93, x94, x95, x96);
+            //printf(" 97:%f 98:%f 99:%f 100:%f 101:%f 102:%f 103:%f 104:%f 105:%f 106:%f 107:%f 108:%f 109:%f 110:%f 111:%f 112:%f 113:%f 114:%f 115:%f 116:%f 117:%f 118:%f 119:%f 120:%f 121:%f 122:%f 123:%f ", x97, x98, x99, x100, x101, x102, x103, x104, x105, x106, x107, x108, x109, x110, x111, x112, x113, x114, x115, x116, x117, x118, x119, x120, x121, x122, x123);
+            //printf("\n");
             printed = true;
                
         }*/

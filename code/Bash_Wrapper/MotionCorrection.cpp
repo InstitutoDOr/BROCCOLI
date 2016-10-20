@@ -25,7 +25,9 @@
 #include <iomanip>
 
 #include <limits.h>
+#ifndef WINDOWS
 #include <unistd.h>
+#endif
 
 #include "HelpFunctions.cpp"
 
@@ -555,13 +557,21 @@ int main(int argc, char ** argv)
 	filter3RealLinearPathAndName.append(getenv("BROCCOLI_DIR"));
 	filter3ImagLinearPathAndName.append(getenv("BROCCOLI_DIR"));
 
+#ifdef WINDOWS
+	filter1RealLinearPathAndName.append("filters\\filter1_real_linear_registration.bin");
+	filter1ImagLinearPathAndName.append("filters\\filter1_imag_linear_registration.bin");
+	filter2RealLinearPathAndName.append("filters\\filter2_real_linear_registration.bin");
+	filter2ImagLinearPathAndName.append("filters\\filter2_imag_linear_registration.bin");
+	filter3RealLinearPathAndName.append("filters\\filter3_real_linear_registration.bin");
+	filter3ImagLinearPathAndName.append("filters\\filter3_imag_linear_registration.bin");
+#else
 	filter1RealLinearPathAndName.append("filters/filter1_real_linear_registration.bin");
 	filter1ImagLinearPathAndName.append("filters/filter1_imag_linear_registration.bin");
 	filter2RealLinearPathAndName.append("filters/filter2_real_linear_registration.bin");
 	filter2ImagLinearPathAndName.append("filters/filter2_imag_linear_registration.bin");
 	filter3RealLinearPathAndName.append("filters/filter3_real_linear_registration.bin");
 	filter3ImagLinearPathAndName.append("filters/filter3_imag_linear_registration.bin");
-
+#endif
 	ReadBinaryFile(h_Quadrature_Filter_1_Real,MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE,filter1RealLinearPathAndName.c_str(),allMemoryPointers,numberOfMemoryPointers,allNiftiImages,numberOfNiftiImages); 
 	ReadBinaryFile(h_Quadrature_Filter_1_Imag,MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE,filter1ImagLinearPathAndName.c_str(),allMemoryPointers,numberOfMemoryPointers,allNiftiImages,numberOfNiftiImages); 
 	ReadBinaryFile(h_Quadrature_Filter_2_Real,MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE*MOTION_CORRECTION_FILTER_SIZE,filter2RealLinearPathAndName.c_str(),allMemoryPointers,numberOfMemoryPointers,allNiftiImages,numberOfNiftiImages); 
@@ -596,7 +606,12 @@ int main(int argc, char ** argv)
 
 	std::string buildInfoPath;
 	buildInfoPath.append(getenv("BROCCOLI_DIR"));
+
+#ifdef WINDOWS
+	buildInfoPath.append("compiled\\Kernels\\");
+#else
 	buildInfoPath.append("compiled/Kernels/");
+#endif
 
 	for (int k = 0; k < BROCCOLI.GetNumberOfKernelFiles(); k++)
 	{
@@ -686,7 +701,17 @@ int main(int argc, char ** argv)
             BROCCOLI.SetOutputPhaseCertainties(h_Phase_Certainties);
             BROCCOLI.SetOutputPhaseGradients(h_Phase_Gradients);
         }
-             
+
+		// Print run kernel errors
+		int* runKernelErrorsa = BROCCOLI.GetOpenCLRunKernelErrors();
+		for (int i = 0; i < BROCCOLI.GetNumberOfOpenCLKernels(); i++)
+		{
+			if (runKernelErrorsa[i] != 0)
+			{
+				printf("Run kernel error for kernel '%s' is '%s' \n", BROCCOLI.GetOpenCLKernelName(i), BROCCOLI.GetOpenCLErrorMessage(runKernelErrorsa[i]));
+			}
+		}
+
         // Run the actual motion correction
 		startTime = GetWallTime();        
 		BROCCOLI.PerformMotionCorrectionWrapper();        
