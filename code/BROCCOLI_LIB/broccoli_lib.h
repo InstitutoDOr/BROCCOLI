@@ -254,6 +254,7 @@ class BROCCOLI_LIB
 		void SetInputMNIBrainMask(float* input);
 		void SetInputMaskIndex1D(int* input);
 		void SetInputFirstLevelResults(float* input);
+		void SetNumberOfInputs(int N);
 		void SetNumberOfSubjects(size_t N);
 		void SetNumberOfSubjectsGroup1(int *N);
 		void SetNumberOfSubjectsGroup2(int *N);
@@ -1244,6 +1245,8 @@ class BROCCOLI_LIB
 		float EPI_Smoothing_FWHM;
 		float AR_Smoothing_FWHM;
 		bool AUTO_MASK;
+
+		int NUMBER_OF_INPUTS; // additional inputs for searchlight SVM
 
 		// Statistical analysis variables
 		size_t NUMBER_OF_SUBJECTS;

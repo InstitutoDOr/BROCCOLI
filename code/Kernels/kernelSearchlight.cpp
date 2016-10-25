@@ -671,7 +671,8 @@ __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 										__global const int *voxelIndex1D, 	// 1
 										__private int NUMBER_OF_VOLUMES, 	// 2
 										__private int SIZ_VOLUME, 			// 3
-										__private int VOXELS_MASK) 			// 4
+										__private int VOXELS_MASK, 			// 4
+                                        __private int NUMBER_OF_INPUTS) 	// 5
 {
 	int voxind = get_global_id(0);
 	int volumeId = voxelIndex1D[voxind];
@@ -692,23 +693,28 @@ __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 
 	////printf("%d\n", SIZ_VOLUME);
 	// calculate maximum and minimum over time
-	for (int t=1; t<NUMBER_OF_VOLUMES; ++t)
+	for (int c = 0; c < NUMBER_OF_INPUTS; ++c)
 	{
-		if( Volumes[volumeId+t*SIZ_VOLUME] > maximum)
-			maximum = Volumes[volumeId+t*SIZ_VOLUME];
-		if( Volumes[volumeId+t*SIZ_VOLUME] < minimum)
-			minimum = Volumes[volumeId+t*SIZ_VOLUME];
+
+		for (int t = 0; t<NUMBER_OF_VOLUMES; ++t)
+		{
+			if (Volumes[volumeId + t*SIZ_VOLUME + c*SIZ_VOLUME*NUMBER_OF_VOLUMES] > maximum)
+				maximum = Volumes[volumeId + t*SIZ_VOLUME + c*SIZ_VOLUME*NUMBER_OF_VOLUMES];
+			if (Volumes[volumeId + t*SIZ_VOLUME + c*SIZ_VOLUME*NUMBER_OF_VOLUMES] < minimum)
+				minimum = Volumes[volumeId + t*SIZ_VOLUME + c*SIZ_VOLUME*NUMBER_OF_VOLUMES];
+		}
+
 	}
 
 	// get scaling values to scale between -1 and +1
 	float scale = 2/(maximum-minimum);
 	float minimum_scaled = minimum * scale;
-
+	
 	if ((maximum-minimum) < eps )
 	{
 		scale = 1;
 		minimum_scaled = 0;
-
+	
 		// if value is different from zero
 		if (fabs(maximum) > eps)
 		{
@@ -716,15 +722,19 @@ __kernel void PrepareInputSearchlight(	__global float* Volumes, 			// 0
 			minimum_scaled = 0;
 		}
 	}
+    
 
 	////printf("voxind=%d volumeId=%d scale=%f minimum_scaled=%f minimum= %f maximum=%f\n", voxind, volumeId, scale, minimum_scaled, minimum, maximum);
 
 	// apply scaling
-	for (int t=0; t<NUMBER_OF_VOLUMES; ++t)
-	{
-		Volumes[volumeId+t*SIZ_VOLUME] = Volumes[volumeId+t*SIZ_VOLUME] * scale - minimum_scaled - 1.;
-		////printf("x[%i][%i]=%f ", k, m, x_space[k*d+m] );
-	}
+	for (int c=0; c<NUMBER_OF_INPUTS; ++c) 
+    {
+        for (int t=0; t<NUMBER_OF_VOLUMES; ++t)
+        {
+            Volumes[volumeId+t*SIZ_VOLUME+c*SIZ_VOLUME*NUMBER_OF_VOLUMES] = Volumes[volumeId+t*SIZ_VOLUME+c*SIZ_VOLUME*NUMBER_OF_VOLUMES] * scale - minimum_scaled - 1.;
+            ////printf("x[%i][%i]=%f ", k, m, x_space[k*d+m] );
+        }
+    }
 }
 
 float dotproduct(__global float *a, __global float *b, int N )
@@ -747,7 +757,8 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 									__global float* x_space, 			// 7
 									__global float *kmatrix, 			// 8
 									__private int voxbatchoffset, 		// 9
-									__private int voxbatchsize)			// 10
+									__private int voxbatchsize,			// 10
+                                    __private int NUMBER_OF_INPUTS)     // 11
 
 {
 
@@ -772,25 +783,29 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 	//	return;
 
 	// populate x
-	int voxoffset = voxind*NFEAT*NUMBER_OF_VOLUMES;
+	int voxoffset = voxind*NFEAT*NUMBER_OF_VOLUMES*NUMBER_OF_INPUTS;
 	//if (testIndex == volumeId)
 	//    	//printf("voxind: %d x_space:\n",voxind);
 
-	for (int t = 0; t < NUMBER_OF_VOLUMES; t++)
-    {
-	   for (int k=0; k<NFEAT; k++)
-	   {
-		   x_space[t*NFEAT + k + voxoffset] = Volumes[volumeId+deltaIndex[k]+t*SIZ_VOLUME]; // + c_d[t]
 
-		   //if (testIndex == volumeId)
-			//   //printf("%f ", x_space[t*NFEAT + k + voxoffset]);
-	   }
-	  // if (testIndex == volumeId)
-	   	//    //printf("\n");
+    for (int t = 0; t < NUMBER_OF_VOLUMES; t++)
+    {
+        for (int c=0; c<NUMBER_OF_INPUTS; ++c) 
+        {
+           for (int k=0; k<NFEAT; k++)
+           {
+               x_space[t*NFEAT*NUMBER_OF_VOLUMES + c*NFEAT + k + voxoffset] = Volumes[volumeId+deltaIndex[k]+t*SIZ_VOLUME+c*SIZ_VOLUME*NUMBER_OF_VOLUMES]; // + c_d[t]
+
+               //if (testIndex == volumeId)
+                //   //printf("%f ", x_space[t*NFEAT + k + voxoffset]);
+           }
+          // if (testIndex == volumeId)
+            //    //printf("\n");
+        }
     }
 
     // add sphere offset based on voxel index
-    x_space = x_space + voxind*NFEAT*NUMBER_OF_VOLUMES;
+    x_space = x_space + voxoffset;
     kmatrix = kmatrix + voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES;
 
     // compute kernel matrix
@@ -836,7 +851,8 @@ __kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Per
                                                   __private int fold,						// 20
 												  __private int NperFold,					// 21
 												  __private int voxbatchoffset, 			// 22
-									              __private int voxbatchsize)				// 23
+									              __private int voxbatchsize,				// 23
+												  __private int NUMBER_OF_INPUTS)           // 24
 {
     int voxind = get_global_id(0);
 
@@ -868,7 +884,7 @@ __kernel void CalculateStatisticalMapSearchlight( __global float* Classifier_Per
 	int trainOffset = voxindWithOffset*(NUMBER_OF_VOLUMES - NperFold);
 	int testOffset  = voxindWithOffset*NperFold;
 
-	float accuracy = doFold(x_space + voxind*NFEAT*NUMBER_OF_VOLUMES, trainIndex + trainOffset, testIndex + testOffset, NFEAT, alph + trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix + voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold, NperFold);
+	float accuracy = doFold(x_space + voxind*NFEAT*NUMBER_OF_VOLUMES*NUMBER_OF_INPUTS, trainIndex + trainOffset, testIndex + testOffset, NFEAT, alph + trainOffset, c_d, trainN, NUMBER_OF_VOLUMES, kmatrix + voxind*NUMBER_OF_VOLUMES*NUMBER_OF_VOLUMES, fold, NperFold);
 	
     Classifier_Performance[volumeId] = Classifier_Performance[volumeId] + accuracy;
 }

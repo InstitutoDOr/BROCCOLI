@@ -13142,6 +13142,10 @@ void BROCCOLI_LIB::PerformGLMFTestSecondLevelWrapper()
 	clReleaseMemObject(d_Residual_Variances);
 }
 
+void BROCCOLI_LIB::SetNumberOfInputs(int N)
+{
+	NUMBER_OF_INPUTS = N;
+}
 
 void BROCCOLI_LIB::PerformSearchlightWrapperNN()
 {
@@ -13229,8 +13233,9 @@ void BROCCOLI_LIB::PerformSearchlightWrapperNN()
 
 void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEOUT)
 {
-    	// Allocate memory for volumes
-    d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
+	printf("PrepareSearchlightWrapperSVM called. Number of inputs: %d\n", NUMBER_OF_INPUTS);
+    // Allocate memory for volumes
+    d_First_Level_Results = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * NUMBER_OF_INPUTS * sizeof(float), NULL, NULL);
     d_MNI_Brain_Mask = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
     
     // Allocate memory for classes
@@ -13241,7 +13246,7 @@ void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
     d_Statistical_Maps = clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
     
     // Copy data to device
-    clEnqueueWriteBuffer(commandQueue, d_First_Level_Results, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * sizeof(float), h_First_Level_Results , 0, NULL, NULL);
+    clEnqueueWriteBuffer(commandQueue, d_First_Level_Results, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * NUMBER_OF_SUBJECTS * NUMBER_OF_INPUTS * sizeof(float), h_First_Level_Results , 0, NULL, NULL);
     clEnqueueWriteBuffer(commandQueue, d_MNI_Brain_Mask, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), h_MNI_Brain_Mask , 0, NULL, NULL);
 
     // Copy model to constant memory
@@ -13272,6 +13277,7 @@ void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
 	clSetKernelArg(PrepareInputSearchlightKernel, 2, sizeof(int),  	  &NUMBER_OF_SUBJECTS);
 	clSetKernelArg(PrepareInputSearchlightKernel, 3, sizeof(int),     &SIZ_VOLUME);
 	clSetKernelArg(PrepareInputSearchlightKernel, 4, sizeof(int),     &vox_mask);
+    clSetKernelArg(PrepareInputSearchlightKernel, 5, sizeof(int),     &NUMBER_OF_INPUTS);
 
 	printf("Before preparing input\n");
 
@@ -13436,7 +13442,7 @@ void BROCCOLI_LIB::PrepareSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
 	clEnqueueWriteBuffer(commandQueue, d_deltas, CL_TRUE, 0, NFEAT* sizeof(int), deltas , 0, NULL, NULL);
 
     // divide voxels in batches to avoid out of resources (depends on GPU memory/performance)
-    d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * sizeof(float), NULL, NULL);
+    d_x_space = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NFEAT * NUMBER_OF_INPUTS * sizeof(float), NULL, NULL);
     d_kmatrix = clCreateBuffer(context, CL_MEM_READ_WRITE, NUM_VOXELS_BATCH * NUMBER_OF_SUBJECTS * NUMBER_OF_SUBJECTS * sizeof(float), NULL, NULL);
 
     // create help buffers
@@ -13487,6 +13493,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
 
 		clSetKernelArg(PrepareSearchlightKernel, 9, sizeof(int),     &voxoffset);
 		clSetKernelArg(PrepareSearchlightKernel, 10, sizeof(int),    &voxbatchsize);
+        clSetKernelArg(PrepareSearchlightKernel, 11, sizeof(int),    &NUMBER_OF_INPUTS);
 
         if (VERBOS)
             printf("Before preparing x-space and kernel matrix\n");
@@ -13532,6 +13539,7 @@ void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 21, sizeof(int),    &LEAVEOUT); // NperFold
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 22, sizeof(int),    &voxoffset);
 		   clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 23, sizeof(int),    &voxbatchsize);
+           clSetKernelArg(CalculateStatisticalMapSearchlightKernel, 24, sizeof(int),    &NUMBER_OF_INPUTS);
 
 		   runKernelErrorCalculateStatisticalMapSearchlight = clEnqueueNDRangeKernel(commandQueue, CalculateStatisticalMapSearchlightKernel, 1, NULL, globalWorkSizeCalculateStatisticalMapSearchlight, localWorkSizeCalculateStatisticalMapSearchlight, 0, NULL, NULL);
 		   clFinish(commandQueue);		   
@@ -13544,22 +13552,9 @@ void BROCCOLI_LIB::PerformSearchlightWrapperSVM(int NUM_VOXELS_BATCH, int LEAVEO
     clEnqueueReadBuffer(commandQueue, d_Statistical_Maps, CL_TRUE, 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), h_Statistical_Maps_MNI, 0, NULL, NULL);
     clFinish(commandQueue);   
 
-	/*cl_int clEnqueueFillBuffer(cl_command_queue  command_queue,
-		cl_mem  buffer,
-		const void  *pattern,
-		size_t  pattern_size,
-		size_t  offset,
-		size_t  size,
-		cl_uint  num_events_in_wait_list,
-		const cl_event  *event_wait_list,
-		cl_event  *event)*/
-
 	float arg = 0;
 	clEnqueueFillBuffer(commandQueue, d_Statistical_Maps, &arg, sizeof(arg), 0, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), 0, NULL, NULL);
 	clFinish(commandQueue);
-	//clCreateBuffer(context, CL_MEM_READ_WRITE, MNI_DATA_W * MNI_DATA_H * MNI_DATA_D * sizeof(float), NULL, NULL);
-
-    
 }
 
 void BROCCOLI_LIB::ReleaseMemorySearchlightWrapperSVM()

@@ -94,7 +94,7 @@ int main(int argc, char **argv)
                    
     float           CLUSTER_DEFINING_THRESHOLD = 2.5f;
 	size_t			NUMBER_OF_PERMUTATIONS = 5000;
-	int				LEAVEOUT;
+	int				LEAVEOUT = 1;
 	float			SIGNIFICANCE_LEVEL = 0.05f;
 	int				INFERENCE_MODE = 1;
 	bool			MASK = false;
@@ -116,7 +116,7 @@ int main(int argc, char **argv)
 	const char*		outputFilename;
 
     // Size parameters
-    size_t  DATA_W, DATA_H, DATA_D, NUMBER_OF_VOLUMES;
+    size_t  DATA_W, DATA_H, DATA_D, NUMBER_OF_VOLUMES, NUMBER_OF_INPUTS=1;
     
     //---------------------    
     
@@ -162,10 +162,27 @@ int main(int argc, char **argv)
         }
         fclose(fp);             
     }
+    NUMBER_OF_INPUTS = 1;
     
     // Loop over additional inputs
-
-    int i = 2;
+    int i=2;
+    while (i < argc)
+    {
+        if (argv[i][0] == '-')
+            break;
+            
+        fp = fopen(argv[i],"r");
+        if (fp == NULL)
+        {
+            printf("Could not open file %s !\n",argv[i]);
+            return EXIT_FAILURE;
+        }
+        fclose(fp);  
+        NUMBER_OF_INPUTS++;
+        i++;
+    }
+    
+    i = NUMBER_OF_INPUTS+1;
     while (i < argc)
     {
         char *input = argv[i];
@@ -349,6 +366,8 @@ int main(int argc, char **argv)
 
 			MASK = true;
             MASK_NAME = argv[i+1];
+			std::string buftmp(MASK_NAME);
+			printf("Mask filename: %s\n", buftmp.c_str());
             i += 2;
         }
         else if (strcmp(input,"-classifier") == 0)
@@ -460,21 +479,31 @@ int main(int argc, char **argv)
 
 	double startTime = GetWallTime();
     
-    // Read data
-
-    nifti_image *inputData = nifti_image_read(argv[1],1);
+    int input_start_index = numberOfNiftiImages;
     
-    if (inputData == NULL)
+    // Read data
+	nifti_image *inputData;
+    for (int kim=0; kim<NUMBER_OF_INPUTS; ++kim)
     {
-        printf("Could not open volumes!\n");
-        return EXIT_FAILURE;
+		std::string buftmp(argv[kim+1]);
+		printf("Reading image: %s\n", buftmp.c_str());
+
+        inputData = nifti_image_read(argv[kim+1],1);
+        
+        if (inputData == NULL)
+        {
+            printf("Could not open volumes!\n");
+            return EXIT_FAILURE;
+        }
+        allNiftiImages[numberOfNiftiImages] = inputData;
+        numberOfNiftiImages++;
     }
-	allNiftiImages[numberOfNiftiImages] = inputData;
-	numberOfNiftiImages++;
     
 	nifti_image *inputMask;
 	if (MASK)
 	{
+		std::string buftmp(MASK_NAME);
+		printf("Reading mask: %s\n", buftmp.c_str());
 	    inputMask = nifti_image_read(MASK_NAME,1);
     
 	    if (inputMask == NULL)
@@ -496,6 +525,8 @@ int main(int argc, char **argv)
  	{
 		printf("It took %f seconds to read the nifti file(s)\n",(float)(endTime - startTime));
 	}
+
+	printf("Nifti data loaded. Number of input images: %d\n", NUMBER_OF_INPUTS);
 
     // Get data dimensions from input data
    	DATA_W = inputData->nx;
@@ -574,15 +605,18 @@ int main(int argc, char **argv)
 		
 	
     // ------------------------------------------------
-
-    // Calculate size, in bytes 
-    size_t DATA_SIZE = DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES * sizeof(float);
+	
+	// Calculate size, in bytes 
+    size_t DATA_SIZE = DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES * NUMBER_OF_INPUTS * sizeof(float);
     size_t VOLUME_SIZE = DATA_W * DATA_H * DATA_D * sizeof(float);
     size_t CLASS_SIZE = NUMBER_OF_VOLUMES * sizeof(float);
                         
     // ------------------------------------------------
 
     // Allocate memory on the host
+
+	printf("DATA_SIZE: %d VOLUME_SIZE: %d CLASS_SIZE: %d\n", DATA_SIZE, VOLUME_SIZE, CLASS_SIZE);
+
 
 	startTime = GetWallTime();
     
@@ -655,49 +689,54 @@ int main(int argc, char **argv)
 
 	// Read data
 
-    // Convert data to floats
-    if ( inputData->datatype == DT_SIGNED_SHORT )
+   for (int kim=0;kim<NUMBER_OF_INPUTS; ++kim)
     {
-        short int *p = (short int*)inputData->data;
-    
-        for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+        inputData = allNiftiImages[input_start_index+kim];
+        
+        // Convert data to floats
+        if ( inputData->datatype == DT_SIGNED_SHORT )
         {
-            h_Data[i] = (float)p[i];
+            short int *p = (short int*)inputData->data;
+        
+            for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+            {
+                h_Data[i+kim*DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES] = (float)p[i];
+            }
         }
-    }
-	else if ( inputData->datatype == DT_UINT8 )
-    {
-        unsigned char *p = (unsigned char*)inputData->data;
-    
-        for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+        else if ( inputData->datatype == DT_UINT8 )
         {
-            h_Data[i] = (float)p[i];
+            unsigned char *p = (unsigned char*)inputData->data;
+        
+            for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+            {
+                h_Data[i+kim*DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES] = (float)p[i];
+            }
         }
-    }
-    else if ( inputData->datatype == DT_UINT16 )
-    {
-        unsigned short int *p = (unsigned short int*)inputData->data;
-    
-        for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+        else if ( inputData->datatype == DT_UINT16 )
         {
-            h_Data[i] = (float)p[i];
+            unsigned short int *p = (unsigned short int*)inputData->data;
+        
+            for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+            {
+                h_Data[i+kim*DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES] = (float)p[i];
+            }
         }
-    }
-    else if ( inputData->datatype == DT_FLOAT )
-    {
-        float *p = (float*)inputData->data;
-    
-        for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+        else if ( inputData->datatype == DT_FLOAT )
         {
-            h_Data[i] = p[i];
+            float *p = (float*)inputData->data;
+        
+            for (size_t i = 0; i < DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES; i++)
+            {
+                h_Data[i+kim*DATA_W * DATA_H * DATA_D * NUMBER_OF_VOLUMES] = p[i];
+            }
         }
-    }
-    else
-    {
-        printf("Unknown data type in input data, aborting!\n");
-        FreeAllMemory(allMemoryPointers,numberOfMemoryPointers);
-		FreeAllNiftiImages(allNiftiImages,numberOfNiftiImages);
-        return EXIT_FAILURE;
+        else
+        {
+            printf("Unknown data type in input data, aborting!\n");
+            FreeAllMemory(allMemoryPointers,numberOfMemoryPointers);
+            FreeAllNiftiImages(allNiftiImages,numberOfNiftiImages);
+            return EXIT_FAILURE;
+        }
     }
     
 	int maskVoxels = 0;
@@ -893,6 +932,7 @@ int main(int argc, char **argv)
         BROCCOLI.SetInputMNIBrainMask(h_Mask);
         BROCCOLI.SetInputMaskIndex1D(h_index1D);
         BROCCOLI.SetNumberMaskVoxel(VOXELS_MASK);
+		BROCCOLI.SetNumberOfInputs(NUMBER_OF_INPUTS);
         BROCCOLI.SetMNIWidth(DATA_W);
         BROCCOLI.SetMNIHeight(DATA_H);
         BROCCOLI.SetMNIDepth(DATA_D);                
