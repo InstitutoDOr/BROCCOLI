@@ -794,7 +794,7 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
         {
            for (int k=0; k<NFEAT; k++)
            {
-               x_space[t*NFEAT*NUMBER_OF_VOLUMES + c*NFEAT + k + voxoffset] = Volumes[volumeId+deltaIndex[k]+t*SIZ_VOLUME+c*SIZ_VOLUME*NUMBER_OF_VOLUMES]; // + c_d[t]
+               x_space[t*NFEAT*NUMBER_OF_INPUTS + c*NFEAT + k + voxoffset] = Volumes[volumeId+deltaIndex[k]+t*SIZ_VOLUME+c*SIZ_VOLUME*NUMBER_OF_VOLUMES]; // + c_d[t]
 
                //if (testIndex == volumeId)
                 //   //printf("%f ", x_space[t*NFEAT + k + voxoffset]);
@@ -816,7 +816,7 @@ __kernel void PrepareSearchlight( 	__global const float* Volumes, 		// 0
 	{
 		for (int b=0; b<NUMBER_OF_VOLUMES; ++b)
 		{
-			kmatrix[a+b*NUMBER_OF_VOLUMES] = dotproduct(x_space + a*NFEAT, x_space + b*NFEAT, NFEAT);
+			kmatrix[a+b*NUMBER_OF_VOLUMES] = dotproduct(x_space + a*NFEAT*NUMBER_OF_INPUTS, x_space + b*NFEAT*NUMBER_OF_INPUTS, NFEAT*NUMBER_OF_INPUTS);
 
 			//if (testIndex == volumeId)
 			 //   //printf("%f ",kmatrix[a+b*NUMBER_OF_VOLUMES]);

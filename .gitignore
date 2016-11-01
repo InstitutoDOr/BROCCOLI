@@ -190,3 +190,5 @@ ModelManifest.xml
 
 #Compiled
 compiled
+/compiled/Kernels/*.txt
+/compiled/Kernels/*.bin
