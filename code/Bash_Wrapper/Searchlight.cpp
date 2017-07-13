@@ -94,6 +94,7 @@ int main(int argc, char **argv)
                    
     float           CLUSTER_DEFINING_THRESHOLD = 2.5f;
 	size_t			NUMBER_OF_PERMUTATIONS = 5000;
+    size_t          PERMUTE_INIT = 0;
 	int				LEAVEOUT = 1;
 	float			SIGNIFICANCE_LEVEL = 0.05f;
 	int				INFERENCE_MODE = 1;
@@ -144,6 +145,7 @@ int main(int argc, char **argv)
 		//printf(" -writepermutations         Write all the random permutations (or sign flips) to a text file \n");
 		//printf(" -permutationfile           Use a specific permutation file or sign flipping file (e.g. from FSL) \n");
         printf(" -permutations              Number of permutations (default 5000) \n");
+		printf(" -permutinit                Number from which to retake permutations \n");
 		printf(" -leaveout                  Number of examples to leaveout for prediction. Leaveout samples will be contiguous. Therefore one can test paired predictions using '-leaveout 2') . Number folds = number(input files)/leaveout. (default 1) \n");
 		printf(" -quiet                     Don't print anything to the terminal (default false) \n");
         printf(" -verbose                   Print extra stuff (default false) \n");
@@ -265,7 +267,28 @@ int main(int argc, char **argv)
             }
             i += 2;
         }
-		else if (strcmp(input, "-leaveout") == 0)
+		else if (strcmp(input,"-permutinit") == 0)
+        {
+			if ( (i+1) >= argc  )
+			{
+			    printf("Unable to read value after -permutinit !\n");
+                return EXIT_FAILURE;
+			}
+
+            PERMUTE_INIT = (int)strtol(argv[i+1], &p, 10);
+
+			if (!isspace(*p) && *p != 0)
+		    {
+		        printf("Init number of permutations must be an integer! You provided %s \n",argv[i+1]);
+				return EXIT_FAILURE;
+		    }
+            else if (PERMUTE_INIT < 0)
+            {
+                printf("Init number of permutations must be >= 0!\n");
+                return EXIT_FAILURE;
+            }
+            i += 2;
+        }else if (strcmp(input, "-leaveout") == 0)
 		{
 			if ((i + 1) >= argc)
 			{
@@ -972,7 +995,7 @@ int main(int argc, char **argv)
         if (CLASSIFIER == 1)
 			BROCCOLI.PrepareSearchlightWrapperSVM(NUM_VOXELS_BATCH, LEAVEOUT);
 
-		for (int k=0; k <= NUMBER_OF_PERMUTATIONS; ++k)
+		for (int k=PERMUTE_INIT; k <= NUMBER_OF_PERMUTATIONS; ++k)
 		{
 
 			// first pass is with true labels
