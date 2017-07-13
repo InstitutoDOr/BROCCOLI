@@ -995,6 +995,7 @@ int main(int argc, char **argv)
         if (CLASSIFIER == 1)
 			BROCCOLI.PrepareSearchlightWrapperSVM(NUM_VOXELS_BATCH, LEAVEOUT);
 
+		FILE *permutationsFile;
 		for (int k=PERMUTE_INIT; k <= NUMBER_OF_PERMUTATIONS; ++k)
 		{
 
@@ -1005,12 +1006,11 @@ int main(int argc, char **argv)
 				size_t i;
 				for (i = 0; i < NUMBER_OF_VOLUMES - 1; i++)
 				{
-				  size_t j = i + rand() / (RAND_MAX / (NUMBER_OF_VOLUMES - i) + 1);
-				  float t = h_d[j];
-				  h_d[j] = h_d[i];
-				  h_d[i] = t;
+					size_t j = i + rand() / (RAND_MAX / (NUMBER_OF_VOLUMES - i) + 1);
+					float t = h_d[j];
+					h_d[j] = h_d[i];
+					h_d[i] = t;
 				}
-
 			}
 
 			startTime = GetWallTime();
@@ -1075,10 +1075,10 @@ int main(int argc, char **argv)
 				char buffer[256]; sprintf(buffer, "_acc_%05d.nii", k);
 				std::string str(buffer);
 
+				std::stringstream tmp;
 				if (!CHANGE_OUTPUT_NAME)
 				{
 					std::string buf(inputData->fname);
-					std::stringstream tmp;
 					tmp << buf.substr(0, buf.size() - 4) << str;
                     buf = createSubDirectoryName(tmp.str(), "PERM");
                     printf("%s", buf.c_str());
@@ -1087,12 +1087,24 @@ int main(int argc, char **argv)
 				else
 				{
 					std::string buf(outputFilename);
-					std::stringstream tmp;
 					tmp << buf.substr(0, buf.size() - 4) << str;
                     buf = createSubDirectoryName(tmp.str(), "PERM");
                     printf("%s", buf.c_str());
 					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
 				}
+
+				if (k == PERMUTE_INIT)
+				{
+					std::string permFileName = createSubDirectoryName(tmp.str(), "PERM");
+					tmp.str("");
+					tmp << permFileName.substr(0, permFileName.size() - 4) << "_" << PERMUTE_INIT << "_" << NUMBER_OF_PERMUTATIONS << ".txt";
+					permutationsFile = fopen(tmp.str().c_str(), "wt+");
+				}
+
+				fprintf(permutationsFile, "%d\t", k);
+				for (int i = 0; i < NUMBER_OF_VOLUMES; i++)	fprintf(permutationsFile, "%f\t", h_d[i]);
+				fprintf(permutationsFile, "\n");
+				if (k == NUMBER_OF_PERMUTATIONS) fclose(permutationsFile);
 			}
 
 			startTime = GetWallTime();
