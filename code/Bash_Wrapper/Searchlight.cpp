@@ -1069,6 +1069,15 @@ int main(int argc, char **argv)
 				{
 					nifti_set_filenames(outputNifti, outputFilename, 0, 1);
 				}
+
+				startTime = GetWallTime();
+				WriteNifti(outputNifti, h_Classifier_Performance, "_acc", ADD_FILENAME, DONT_CHECK_EXISTING_FILE);
+				endTime = GetWallTime();
+
+				if (VERBOS)
+				{
+					printf("It took %f seconds to write the nifti file(s)\n", (float)(endTime - startTime));
+				}
 			}
 			else
 			{
@@ -1093,7 +1102,16 @@ int main(int argc, char **argv)
 					nifti_set_filenames(outputNifti, buf.c_str(), 0, 1);
 				}
 
-				if (k == PERMUTE_INIT)
+				startTime = GetWallTime();
+				WriteNifti(outputNifti, h_Classifier_Performance, "", ADD_FILENAME, DONT_CHECK_EXISTING_FILE);
+				endTime = GetWallTime();
+
+				if (VERBOS)
+				{
+					printf("It took %f seconds to write the nifti file(s)\n", (float)(endTime - startTime));
+				}
+
+				if ((PERMUTE_INIT > 0 && k == PERMUTE_INIT) || (PERMUTE_INIT == 0 && k == 1))
 				{
 					std::string permFileName = createSubDirectoryName(tmp.str(), "PERM");
 					tmp.str("");
@@ -1107,19 +1125,6 @@ int main(int argc, char **argv)
 				if (k == NUMBER_OF_PERMUTATIONS) fclose(permutationsFile);
 			}
 
-			startTime = GetWallTime();
-
-			if (k==0)
-				WriteNifti(outputNifti,h_Classifier_Performance,"_acc",ADD_FILENAME,DONT_CHECK_EXISTING_FILE);
-			else
-				WriteNifti(outputNifti, h_Classifier_Performance, "", ADD_FILENAME, DONT_CHECK_EXISTING_FILE);
-			
-			endTime = GetWallTime();
-
-			if (VERBOS)
-			{
-				printf("It took %f seconds to write the nifti file(s)\n",(float)(endTime - startTime));
-			}
 		} // Permutations
         
 		if (CLASSIFIER == 1)
