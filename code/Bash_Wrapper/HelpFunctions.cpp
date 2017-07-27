@@ -376,11 +376,20 @@ bool WriteNifti(nifti_image* inputNifti, float* data, const char* filename, bool
         // Find the dot in the original filename
         const char* p = inputNifti->fname;
         int dotPosition = 0;
-        while ( (p != NULL) && ((*p) != '.') )
-        {
-            p++;
-            dotPosition++;
-        }
+		if (0)
+		{
+           while ( (p != NULL) && ((*p) != '.') )
+           {
+               p++;
+               dotPosition++;
+           }
+		}
+		else
+		{
+			// search the last dot
+			const char *pch = strrchr(p, '.');
+			dotPosition = pch-p;
+		}
     
         // Allocate temporary array
         filenameWithExtension = (char*)malloc(strlen(inputNifti->fname) + strlen(filename) + 1);
