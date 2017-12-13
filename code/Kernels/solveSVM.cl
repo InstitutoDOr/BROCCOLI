@@ -1,4 +1,7 @@
-
+/*
+Gradient ascent SVM algorithm 1 of the following reference:
+Codreanu, V., Dröge, B., Williams, D., Yasar, B., Yang, P., Liu, B., Dong, F., Surinta, O., Schomaker, L. R. B., Roerdink, J. B. T. M., and Wiering, M. A. (2016) Evaluating automatically parallelized versions of the support vector machine. Concurrency Computat.: Pract. Exper., 28: 2274–2294. doi: 10.1002/cpe.3413.
+*/
 void train_svm(int trainN, int NFEAT, __global float *x_space, __constant float *y, __global float* alpha, float* bias, 
 				__global int *trainIndex, __global const float *kmatrix, int N)
 {
